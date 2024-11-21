@@ -60,24 +60,26 @@ abstract class Entity implements JsonSerializable, ArrayAccess, Arrayable, Jsona
         }
 
         self::$weakMap[$this] = [
-            'model'         => $model,
-            'get'           => [],
-            'data'          => [],
-            'schema'        => [],
-            'origin'        => [],
-            'together'      => [],
-            'allow'         => [],
-            'strict_mode'   => true,
-            'type'          => $options['type'] ?? [],
-            'virtual'       => $options['virtual'] ?? false,
-            'readonly'      => $options['readonly'] ?? [],
-            'disuse'        => $options['disuse'] ?? [],
-            'hidden'        => $options['hidden'] ?? [],
-            'visible'       => $options['visible'] ?? [],
-            'append'        => $options['append'] ?? [],
-            'mapping'       => $options['mapping'] ?? [],
-            'strict'        => $options['strict'] ?? true,
-            'relation_keys' => $options['relation_keys'] ?? [],
+            'model'           => $model,
+            'get'             => [],
+            'data'            => [],
+            'schema'          => [],
+            'origin'          => [],
+            'together'        => [],
+            'allow'           => [],
+            'strict_mode'     => true,
+            'update_time'     => $options['update_time'] ?? 'update_time',
+            'create_time'     => $options['create_time'] ?? 'create_time',
+            'type'            => $options['type'] ?? [],
+            'virtual'         => $options['virtual'] ?? false,
+            'readonly'        => $options['readonly'] ?? [],
+            'disuse'          => $options['disuse'] ?? [],
+            'hidden'          => $options['hidden'] ?? [],
+            'visible'         => $options['visible'] ?? [],
+            'append'          => $options['append'] ?? [],
+            'mapping'         => $options['mapping'] ?? [],
+            'strict'          => $options['strict'] ?? true,
+            'relation_keys'   => $options['relation_keys'] ?? [],
         ];
 
         $model->setEntity($this);
@@ -112,7 +114,29 @@ abstract class Entity implements JsonSerializable, ArrayAccess, Arrayable, Jsona
      */
     public function model(): Model
     {
-        return self::$weakMap[$this]['model']->schema(self::$_schema[static::class][0]);
+        $schema = $this->autoCase(self::$_schema[static::class][0]);
+        return self::$weakMap[$this]['model']->schema($schema);
+    }
+
+    /**
+     *  自动转换字段名为小写下划线规范(非严格模式下).
+     *
+     * @param array $schema 字段信息
+     *
+     * @return array
+     */
+    protected function autoCase(array $schema): array
+    {
+        if (!self::$weakMap[$this]['strict']) {
+            foreach ($schema as $name => $val) {
+                $trueName = Str::snake($name);
+                if ($trueName != $name) {
+                    $schema[$trueName] = $val;
+                    unset($schema[$name]);
+                }
+            }
+        }
+        return $schema;
     }
 
     /**
@@ -554,17 +578,9 @@ abstract class Entity implements JsonSerializable, ArrayAccess, Arrayable, Jsona
             return false;
         }
 
-        if (!self::$weakMap[$this]['strict']) {
-            // 非严格模式下 自动转换为小写下划线规范
-            foreach ($data as $name => $val) {
-                $trueName = Str::snake($name);
-                if ($trueName != $name) {
-                    $data[$trueName] = $val;
-                    unset($data[$name]);
-                }
-            }
-        }
-
+        // 自动时间戳处理
+        $this->autoDateTime($data, $isUpdate);
+        $data   = $this->autoCase($data);
         $result = $this->model()->save($data);
 
         if (false === $result) {
@@ -577,6 +593,54 @@ abstract class Entity implements JsonSerializable, ArrayAccess, Arrayable, Jsona
         }
 
         return true;
+    }
+
+    /**
+     * 时间字段自动写入.
+     *
+     * @param array $data 数据
+     * @param bool $update 是否更新
+     * @return void
+     */
+    protected function autoDateTime(array &$data, bool $update)
+    {
+        $dateTimeFields = [self::$weakMap[$this]['update_time']];
+        if (!$update) {
+            array_unshift($dateTimeFields, self::$weakMap[$this]['create_time']);
+        }
+
+        foreach ($dateTimeFields as $field) {
+            if (is_string($field)) {
+                $data[$field] = $this->getDateTime($field);
+                $this->$field = $this->readTransform($data[$field], $this->getFields($field));
+            }
+        }
+    }
+
+    /**
+     * 获取当前时间.
+     *
+     * @param string $field 字段名
+     * @return void
+     */
+    protected function getDateTime(string $field)
+    {
+        $type = $this->getFields($field);
+        if ('int' == $type) {
+            $value = time();
+        } elseif (is_subclass_of($type, Typeable::class)) {
+            $value = $type::from('now', $this)->value();
+        } elseif (str_contains($type, '\\')) {
+            // 对象数据写入
+            $obj = new $type();
+            if ($obj instanceof Stringable) {
+                // 对象数据写入
+                $value = $obj->__toString();
+            }
+        } else {
+            $value = \think\model\type\DateTime::from('now', $this)->value();
+        }
+        return $value;
     }
 
     /**

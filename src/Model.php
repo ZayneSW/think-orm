@@ -766,7 +766,7 @@ abstract class Model implements JsonSerializable, ArrayAccess, Arrayable, Jsonab
             return true;
         }
 
-        if ($this->autoWriteTimestamp && $this->updateTime) {
+        if (!$this->entity && $this->autoWriteTimestamp && $this->updateTime) {
             // 自动写入更新时间
             $data[$this->updateTime] = $this->autoWriteTimestamp();
             if ($this->entity) {
@@ -846,35 +846,37 @@ abstract class Model implements JsonSerializable, ArrayAccess, Arrayable, Jsonab
             }
         }
 
-        // 时间字段自动写入
-        if ($this->autoWriteTimestamp) {
-            foreach ([$this->createTime, $this->updateTime] as $field) {
-                if ($field && !array_key_exists($field, $this->data)) {
-                    $data[$field] = $this->autoWriteTimestamp();
-                    if ($this->entity) {
-                        $this->entity->$field = $data[$field];
-                    } else {
-                        $this->data[$field] = $data[$field];
+        if (!$this->entity) {
+            // 时间字段自动写入
+            if ($this->autoWriteTimestamp) {
+                foreach ([$this->createTime, $this->updateTime] as $field) {
+                    if ($field && !array_key_exists($field, $this->data)) {
+                        $data[$field] = $this->autoWriteTimestamp();
+                        if ($this->entity) {
+                            $this->entity->$field = $data[$field];
+                        } else {
+                            $this->data[$field] = $data[$field];
+                        }
                     }
                 }
             }
-        }
 
-        // 自动（使用修改器）写入字段
-        if (!empty($this->insert)) {
-            foreach ($this->insert as $name => $val) {
-                $field = is_string($name) ? $name : $val;
-                if (!isset($data[$field])) {
-                    if (is_string($name)) {
-                        $data[$field]       = $val;
-                        $this->data[$field] = $val;
-                    } else {
-                        $this->setAttr($field, null);
-                        $data[$field] = $this->data[$field];
-                    }
+            // 自动（使用修改器）写入字段
+            if (!empty($this->insert)) {
+                foreach ($this->insert as $name => $val) {
+                    $field = is_string($name) ? $name : $val;
+                    if (!isset($data[$field])) {
+                        if (is_string($name)) {
+                            $data[$field]       = $val;
+                            $this->data[$field] = $val;
+                        } else {
+                            $this->setAttr($field, null);
+                            $data[$field] = $this->data[$field];
+                        }
 
-                    if ($this->entity) {
-                        $this->entity->$field = $data[$field];
+                        if ($this->entity) {
+                            $this->entity->$field = $data[$field];
+                        }
                     }
                 }
             }
