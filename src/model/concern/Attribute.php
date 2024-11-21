@@ -172,6 +172,19 @@ trait Attribute
         return $this->pk;
     }
 
+    /**
+     * 设置模型的字段信息.
+     *
+     * @param array $schema 
+     * @return $this
+     */
+    public function schema(array $schema)
+    {
+        $this->schema = $schema;
+        return $this;
+    }
+
+
     public function isJsonAssoc(): bool
     {
         return $this->jsonAssoc;
