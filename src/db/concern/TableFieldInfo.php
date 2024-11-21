@@ -31,6 +31,10 @@ trait TableFieldInfo
             $tableName = $this->getTable();
         }
 
+        if (!empty($this->options['field_type'])) {
+            return array_keys($this->options['field_type']);
+        }
+
         return $this->connection->getTableFields($tableName);
     }
 
