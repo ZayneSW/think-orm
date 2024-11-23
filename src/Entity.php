@@ -913,6 +913,7 @@ abstract class Entity implements JsonSerializable, ArrayAccess, Arrayable, Jsona
         } else {
             $this->setData('data', $name, $value);
         }
+        $this->setData('get', $name, null);
     }
 
     /**
