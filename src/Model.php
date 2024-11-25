@@ -568,12 +568,17 @@ abstract class Model implements JsonSerializable, ArrayAccess, Arrayable, Jsonab
     public function refresh(bool $relation = false)
     {
         if ($this->exists) {
-            $this->data   = $this->db()->find($this->getKey())->getData();
-            $this->origin = $this->data;
-            $this->get    = [];
+            $data = $this->db()->find($this->getKey())->getData();
+            if ($this->entity) {
+                $this->entity->setData($data);
+            } else {
+                $this->data   = $data;
+                $this->origin = $this->data;
+                $this->get    = [];
 
-            if ($relation) {
-                $this->relation = [];
+                if ($relation) {
+                    $this->relation = [];
+                }                
             }
         }
 
@@ -657,13 +662,13 @@ abstract class Model implements JsonSerializable, ArrayAccess, Arrayable, Jsonab
      */
     public function save(array | object $data = [], ?string $sequence = null): bool
     {
-        if ($data instanceof Model) {
-            $data = $data->getData();
-        } elseif (is_object($data)) {
-            $data = get_object_vars($data);
-        }
-
         if (!$this->entity) {
+            if ($data instanceof Model) {
+                $data = $data->getData();
+            } elseif (is_object($data)) {
+                $data = get_object_vars($data);
+            }
+
             // 数据对象赋值
             $this->setAttrs($data);
             $data = $this->data;
@@ -851,8 +856,8 @@ abstract class Model implements JsonSerializable, ArrayAccess, Arrayable, Jsonab
             if ($this->autoWriteTimestamp) {
                 foreach ([$this->createTime, $this->updateTime] as $field) {
                     if ($field && !array_key_exists($field, $this->data)) {
-                        $data[$field] = $this->autoWriteTimestamp();
-                            $this->data[$field] = $data[$field];
+                        $data[$field]       = $this->autoWriteTimestamp();
+                        $this->data[$field] = $data[$field];
                     }
                 }
             }

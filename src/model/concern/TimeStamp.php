@@ -16,6 +16,7 @@ namespace think\model\concern;
 use DateTime;
 use DateTimeInterface;
 use Stringable;
+use think\model\contract\Typeable;
 
 /**
  * 自动时间戳.
@@ -167,7 +168,9 @@ trait TimeStamp
                 $value = $this->formatDateTime('Y-m-d H:i:s.u');
                 break;
             default:
-                if (str_contains($type, '\\')) {
+                if (is_subclass_of($type, Typeable::class)) {
+                    $value = $type::from('now', $this)->value();
+                } elseif (str_contains($type, '\\')) {
                     // 对象数据写入
                     $obj = new $type();
                     if ($obj instanceof Stringable) {

@@ -175,7 +175,7 @@ trait Attribute
     /**
      * 设置模型的字段信息.
      *
-     * @param array $schema 
+     * @param array $schema
      * @return $this
      */
     public function schema(array $schema)
@@ -184,17 +184,16 @@ trait Attribute
         return $this;
     }
 
-
     public function isJsonAssoc(): bool
     {
         return $this->jsonAssoc;
     }
-    
+
     public function getType()
     {
         return $this->type;
     }
-    
+
     /**
      * 判断一个字段名是否为主键字段.
      *
@@ -306,7 +305,7 @@ trait Attribute
         if (empty($data)) {
             return $this;
         }
-        
+
         // 清空数据
         $this->data = [];
 
