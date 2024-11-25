@@ -28,6 +28,9 @@ use think\model\contract\EnumTransform;
 use think\model\contract\FieldTypeTransform;
 use think\model\contract\Modelable;
 use think\model\contract\Typeable;
+use think\model\type\Date;
+use think\model\type\DateTime;
+use think\model\type\Json;
 use WeakMap;
 
 /**
@@ -189,7 +192,7 @@ abstract class Entity implements JsonSerializable, ArrayAccess, Arrayable, Jsona
     /**
      * 获取实际字段名.
      * 严格模式下 完全和数据表字段对应一致（默认）
-     * 非严格模式 统一转换为snake规范
+     * 非严格模式 统一转换为snake规范（支持驼峰规范读取）
      *
      * @param string $name  字段名
      *
@@ -237,12 +240,16 @@ abstract class Entity implements JsonSerializable, ArrayAccess, Arrayable, Jsona
 
         return match ($type) {
             'string' => (string) $value,
-            'int'    => (int) $value,
-            'float'  => (float) $value,
-            'bool'   => (bool) $value,
-            'array'  => empty($value) ? [] : json_decode($value, true),
-            'object' => empty($value) ? new \stdClass() : json_decode($value),
-            default  => $typeTransform($type, $value, $this),
+            'int'       => (int) $value,
+            'float'     => (float) $value,
+            'bool'      => (bool) $value,
+            'array'     => empty($value) ? [] : json_decode($value, true),
+            'object'    => empty($value) ? new \stdClass() : json_decode($value),
+            'json'      => $typeTransform(Json::class, $value, $this),
+            'date'      => $typeTransform(Date::class, $value, $this),
+            'datetime'  => $typeTransform(DateTime::class, $value, $this),
+            'timestamp' => $typeTransform(Json::class, $value, $this),
+            default     => $typeTransform($type, $value, $this),
         };
     }
 
@@ -281,13 +288,17 @@ abstract class Entity implements JsonSerializable, ArrayAccess, Arrayable, Jsona
         };
 
         return match ($type) {
-            'string' => (string) $value,
-            'int'    => (int) $value,
-            'float'  => (float) $value,
-            'bool'   => (bool) $value,
-            'object' => is_object($value) ? json_encode($value, JSON_FORCE_OBJECT) : $value,
-            'array'  => json_encode((array) $value, JSON_UNESCAPED_UNICODE),
-            default  => $typeTransform($type, $value, $this),
+            'string'    => (string) $value,
+            'int'       => (int) $value,
+            'float'     => (float) $value,
+            'bool'      => (bool) $value,
+            'object'    => is_object($value) ? json_encode($value, JSON_FORCE_OBJECT) : $value,
+            'array'     => json_encode((array) $value, JSON_UNESCAPED_UNICODE),
+            'json'      => $typeTransform(Json::class, $value, $this),
+            'date'      => $typeTransform(Date::class, $value, $this),
+            'datetime'  => $typeTransform(DateTime::class, $value, $this),
+            'timestamp' => $typeTransform(Json::class, $value, $this),
+            default     => $typeTransform($type, $value, $this),
         };
     }
 
@@ -599,7 +610,7 @@ abstract class Entity implements JsonSerializable, ArrayAccess, Arrayable, Jsona
                 $value = $obj->__toString();
             }
         } else {
-            $value = \think\model\type\DateTime::from('now', $this)->value();
+            $value = DateTime::from('now', $this)->value();
         }
         return $value;
     }
@@ -795,8 +806,7 @@ abstract class Entity implements JsonSerializable, ArrayAccess, Arrayable, Jsona
                 return get_object_vars($object);
             }
         };
-        $data = $class->getPublicVars($this);
-        return array_merge($data, self::$weakMap[$this]['data']);
+        return array_merge($class->getPublicVars($this), self::$weakMap[$this]['data']);
     }
 
     /**

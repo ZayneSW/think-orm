@@ -852,11 +852,7 @@ abstract class Model implements JsonSerializable, ArrayAccess, Arrayable, Jsonab
                 foreach ([$this->createTime, $this->updateTime] as $field) {
                     if ($field && !array_key_exists($field, $this->data)) {
                         $data[$field] = $this->autoWriteTimestamp();
-                        if ($this->entity) {
-                            $this->entity->$field = $data[$field];
-                        } else {
                             $this->data[$field] = $data[$field];
-                        }
                     }
                 }
             }
@@ -872,10 +868,6 @@ abstract class Model implements JsonSerializable, ArrayAccess, Arrayable, Jsonab
                         } else {
                             $this->setAttr($field, null);
                             $data[$field] = $this->data[$field];
-                        }
-
-                        if ($this->entity) {
-                            $this->entity->$field = $data[$field];
                         }
                     }
                 }
