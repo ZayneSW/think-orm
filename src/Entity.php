@@ -87,6 +87,14 @@ abstract class Entity implements JsonSerializable, ArrayAccess, Arrayable, Jsona
         $model->setEntity($this);
         // 初始化模型数据
         $this->initializeData($data);
+        $fields = $this->getFields();
+        // 执行属性器
+        foreach ($fields as $field => $type) {
+            $method = Str::camel($field);
+            if (method_exists($this, $method)) {
+                $this->$method();
+            }
+        }
     }
 
     /**
@@ -313,7 +321,7 @@ abstract class Entity implements JsonSerializable, ArrayAccess, Arrayable, Jsona
             $schema = self::$_schema[static::class];
         } else {
             $class     = new ReflectionClass($this);
-            $propertys = $class->getProperties(ReflectionProperty::IS_PUBLIC);
+            $propertys = $class->getProperties(ReflectionProperty::IS_PUBLIC | ReflectionProperty::IS_PROTECTED);
             $schema    = [];
 
             foreach ($propertys as $property) {
@@ -325,8 +333,9 @@ abstract class Entity implements JsonSerializable, ArrayAccess, Arrayable, Jsona
 
             if (empty($schema)) {
                 // 获取数据表信息
-                $fields = self::$weakMap[$this]['model']->getFieldsType(self::$weakMap[$this]['model']->getTable());
-                $schema = array_merge($fields, self::$weakMap[$this]['type'] ?: self::$weakMap[$this]['model']->getType());
+                $model = self::$weakMap[$this]['model'];
+                $fields = $model->getFieldsType($model->getTable());
+                $schema = array_merge($fields, self::$weakMap[$this]['type'] ?: $model->getType());
             }
 
             self::$_schema[static::class] = $schema;
@@ -537,8 +546,11 @@ abstract class Entity implements JsonSerializable, ArrayAccess, Arrayable, Jsona
                 unset($data[$name]);
             } else {
                 // 统一执行修改器或类型转换后写入
-                $method = 'set' . Str::studly($name) . 'Attr';
-                if (method_exists($this, $method)) {
+                $attr   = Str::studly($name);
+                $method = 'set' . $attr . 'Attr';
+                if (method_exists($this, $attr) && $set = $this->$attr()['set'] ?? '') {
+                    $val = $set($val, $data);
+                } elseif (method_exists($this, $method)) {
                     $val = $this->$method($val, $data);
                 } else {
                     // 类型转换
@@ -935,7 +947,10 @@ abstract class Entity implements JsonSerializable, ArrayAccess, Arrayable, Jsona
         } else {
             $this->setWeakData('data', $name, $value);
         }
-        $this->setWeakData('get', $name, null);
+
+        if (isset(self::$weakMap[$this]['get'][$name])) {
+            self::$weakMap[$this]['get'][$name] = null;
+        }
     }
 
     /**
@@ -953,24 +968,39 @@ abstract class Entity implements JsonSerializable, ArrayAccess, Arrayable, Jsona
         }
 
         $name = $this->getRealFieldName($name);
-        if (array_key_exists($name, self::$weakMap[$this]['get'])) {
+        if (isset(self::$weakMap[$this]['get'][$name])) {
             return self::$weakMap[$this]['get'][$name];
         }
 
         $value  = $this->getValue($name);
-        $method = 'get' . Str::studly($name) . 'Attr';
-        if (method_exists($this, $method)) {
+        $attr   = Str::studly($name);
+        $method = 'get' . $attr . 'Attr';
+        if (method_exists($this, $attr) && $get = $this->$attr()['get'] ?? '') {
+            $value = $get($value, $this->getData());
+        } elseif (method_exists($this, $method)) {
             $value = $this->$method($value, $this->getData());
+        } elseif (is_subclass_of($this->getFields($name), Entity::class) ||
+            is_subclass_of($this->getFields($name), Collection::class)
+        ) {
+            // 动态获取关联数据
+            $value = $this->model()->getRelation($name, true);
         }
 
         $this->setWeakData('get', $name, $value);
         return $value;
     }
 
+    /**
+     * 获取数据对象的值
+     *
+     * @param string $name 名称
+     *
+     * @return mixed
+     */
     private function getValue(string $name)
     {
         if (property_exists($this, $name)) {
-            return $this->$name;
+            return $this->$name ?? null;
         }
         return self::$weakMap[$this]['data'][$name] ?? null;
     }
@@ -988,7 +1018,7 @@ abstract class Entity implements JsonSerializable, ArrayAccess, Arrayable, Jsona
     }
 
     /**
-     * 获取属性（非严格模式）
+     * 获取属性
      *
      * @param string $name 名称
      *
@@ -1000,7 +1030,7 @@ abstract class Entity implements JsonSerializable, ArrayAccess, Arrayable, Jsona
     }
 
     /**
-     * 设置数据（非严格模式）
+     * 设置数据
      *
      * @param string $name  名称
      * @param mixed  $value 值
@@ -1013,7 +1043,7 @@ abstract class Entity implements JsonSerializable, ArrayAccess, Arrayable, Jsona
     }
 
     /**
-     * 检测数据对象的值（非严格模式）
+     * 检测数据对象的值
      *
      * @param string $name 名称
      *
@@ -1029,7 +1059,7 @@ abstract class Entity implements JsonSerializable, ArrayAccess, Arrayable, Jsona
     }
 
     /**
-     * 销毁数据对象的值（非严格模式）
+     * 销毁数据对象的值
      *
      * @param string $name 名称
      *
@@ -1038,7 +1068,11 @@ abstract class Entity implements JsonSerializable, ArrayAccess, Arrayable, Jsona
     public function __unset(string $name): void
     {
         $name = $this->getRealFieldName($name);
-        unset(self::$weakMap[$this]['data'][$name]);
+        if (property_exists($this, $name)) {
+            $this->name = null;
+        } else {
+            self::$weakMap[$this]['data'][$name] = null;
+        }
     }
 
     public function __toString()
@@ -1064,22 +1098,22 @@ abstract class Entity implements JsonSerializable, ArrayAccess, Arrayable, Jsona
     // ArrayAccess
     public function offsetSet(mixed $name, mixed $value): void
     {
-        $this->$name = $value;
-    }
-
-    public function offsetExists(mixed $name): bool
-    {
-        return isset($this->$name);
-    }
-
-    public function offsetUnset(mixed $name): void
-    {
-        unset($this->$name);
+        $this->set($name, $value);
     }
 
     public function offsetGet(mixed $name): mixed
     {
-        return $this->$name ?? null;
+        return $this->get($name);
+    }
+
+    public function offsetExists(mixed $name): bool
+    {
+        return __isset($name);
+    }
+
+    public function offsetUnset(mixed $name): void
+    {
+        $this->__unset($name);
     }
 
     public static function __callStatic($method, $args)

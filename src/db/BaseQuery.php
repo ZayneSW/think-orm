@@ -276,10 +276,10 @@ abstract class BaseQuery
     }
 
     /**
-     * 得到当前或者指定名称的数据表.
+     * 得到当前数据表名称.
      * @param bool $alias 是否返回数据表别名
      *
-     * @return string|array|Raw
+     * @return string
      */
     public function getTable(bool $alias = false)
     {
