@@ -87,14 +87,6 @@ abstract class Entity implements JsonSerializable, ArrayAccess, Arrayable, Jsona
         $model->setEntity($this);
         // 初始化模型数据
         $this->initializeData($data);
-        $fields = $this->getFields();
-        // 执行属性器
-        foreach ($fields as $field => $type) {
-            $method = Str::camel($field);
-            if (method_exists($this, $method)) {
-                $this->$method();
-            }
-        }
     }
 
     /**
@@ -1069,7 +1061,7 @@ abstract class Entity implements JsonSerializable, ArrayAccess, Arrayable, Jsona
     {
         $name = $this->getRealFieldName($name);
         if (property_exists($this, $name)) {
-            $this->name = null;
+            unset($this->name);
         } else {
             self::$weakMap[$this]['data'][$name] = null;
         }
