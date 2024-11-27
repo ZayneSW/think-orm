@@ -81,6 +81,7 @@ abstract class Entity implements JsonSerializable, ArrayAccess, Arrayable, Jsona
             'append'        => $options['append'] ?? [],
             'mapping'       => $options['mapping'] ?? [],
             'strict'        => $options['strict'] ?? true,
+            'auto_relation' => $options['auto_relation'] ?? [],
             'relation_keys' => $options['relation_keys'] ?? [],
         ];
 
@@ -111,7 +112,6 @@ abstract class Entity implements JsonSerializable, ArrayAccess, Arrayable, Jsona
 
     /**
      * 获取模型实例.
-     *
      * @return Model
      */
     public function model(): Model
@@ -325,7 +325,7 @@ abstract class Entity implements JsonSerializable, ArrayAccess, Arrayable, Jsona
 
             if (empty($schema)) {
                 // 获取数据表信息
-                $model = self::$weakMap[$this]['model'];
+                $model  = self::$weakMap[$this]['model'];
                 $fields = $model->getFieldsType($model->getTable());
                 $schema = array_merge($fields, self::$weakMap[$this]['type'] ?: $model->getType());
             }
@@ -1111,8 +1111,13 @@ abstract class Entity implements JsonSerializable, ArrayAccess, Arrayable, Jsona
     public static function __callStatic($method, $args)
     {
         $model = new static();
+        $db    = $model->model()->db();
 
-        return call_user_func_array([$model->model()->db(), $method], $args);
+        if (!empty(self::$weakMap[$model]['auto_relation'])) {
+            // 自动获取关联数据
+            $db->with(self::$weakMap[$model]['auto_relation']);
+        }
+        return call_user_func_array([$db, $method], $args);
     }
 
     public function __call($method, $args)
