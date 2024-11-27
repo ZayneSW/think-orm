@@ -100,6 +100,14 @@ abstract class Entity implements JsonSerializable, ArrayAccess, Arrayable, Jsona
         return [];
     }
 
+    protected function getOption(string $name)
+    {
+        if (property_exists($this, $name)) {
+            return $this->$name;
+        }
+        return self::$weakMap[$this][$name] ?? null;
+    }
+
     /**
      * 解析模型实例名称.
      *
@@ -151,6 +159,14 @@ abstract class Entity implements JsonSerializable, ArrayAccess, Arrayable, Jsona
                 }
             }
 
+            if (str_contains($name, '__')) {
+                // 组装关联JOIN查询数据
+                [$relation, $attr] = explode('__', $name, 2);
+
+                $relations[$relation][$attr] = $val;
+                continue;
+            }
+
             $trueName = $this->getRealFieldName($name);
             if ($this->model()->getPk() == $trueName) {
                 // 记录主键值
@@ -166,6 +182,19 @@ abstract class Entity implements JsonSerializable, ArrayAccess, Arrayable, Jsona
                 $this->$trueName = $value;
                 // 记录原始数据
                 $origin[$trueName] = $value;
+            }
+        }
+
+        if (!empty($relations)) {
+            // 设置关联数据
+            foreach ($relations as $relation => $val) {
+                $relation = $this->getRealFieldName($relation);
+                $type     = $schema[$relation] ?? 'string';
+                if (is_subclass_of($type, Entity::class)) {
+                    $this->$relation = new $type($val);
+                } else {
+                    $this->$relation = new \stdClass($val);
+                }
             }
         }
 

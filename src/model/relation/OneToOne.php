@@ -195,7 +195,9 @@ abstract class OneToOne extends Relation
     {
         if ($join) {
             // 模型JOIN关联组装
-            $this->match($this->model, $relation, $result);
+            if (!$result->getEntity()) {
+                $this->match($this->model, $relation, $result);
+            }
         } else {
             // IN查询
             $this->eagerlyOne($result, $relation, $subRelation, $closure, $cache);
