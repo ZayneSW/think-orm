@@ -31,6 +31,7 @@ use think\model\contract\EnumTransform;
 use think\model\contract\FieldTypeTransform;
 use think\model\contract\Modelable;
 use think\model\contract\Typeable;
+use think\model\Relation;
 use think\model\type\Date;
 use think\model\type\DateTime;
 use think\model\type\Json;
@@ -113,7 +114,7 @@ abstract class Entity implements JsonSerializable, ArrayAccess, Arrayable, Jsona
             $model->model($this);
         }
 
-        self::$weakMap[$this]['model'] = $model;        
+        self::$weakMap[$this]['model'] = $model;
     }
 
     /**
@@ -371,12 +372,12 @@ abstract class Entity implements JsonSerializable, ArrayAccess, Arrayable, Jsona
 
             if (empty($schema)) {
                 if ($this->isView() || $this->isVirtual()) {
-                    $schema = self::$weakMap[$this]['type'] ?:[];
+                    $schema = self::$weakMap[$this]['type'] ?: [];
                 } else {
                     // 获取数据表信息
                     $model  = self::$weakMap[$this]['model'];
                     $fields = $model->getFieldsType($model->getTable());
-                    $schema = array_merge($fields, self::$weakMap[$this]['type'] ?: $model->getType());                    
+                    $schema = array_merge($fields, self::$weakMap[$this]['type'] ?: $model->getType());
                 }
             }
 
@@ -1026,14 +1027,32 @@ abstract class Entity implements JsonSerializable, ArrayAccess, Arrayable, Jsona
             $value = $get($value, $this->getData());
         } elseif (method_exists($this, $method)) {
             $value = $this->$method($value, $this->getData());
-        } elseif (is_subclass_of($this->getFields($name), Entity::class) ||
-            is_subclass_of($this->getFields($name), Collection::class)
-        ) {
+        } elseif (is_null($value)) {
             // 动态获取关联数据
-            $value = $this->model()->getRelation($name, true);
+            $value = $this->getRelationData($name, $value);
         }
 
         $this->setWeakData('get', $name, $value);
+        return $value;
+    }
+
+    /**
+     * 获取关联数据
+     *
+     * @param string $name 名称
+     * @param mixed $value
+     *
+     * @return mixed
+     */
+    protected function getRelationData($name, $value)
+    {
+        $method = Str::camel($name);
+        if (method_exists($this->model(), $method)) {
+            $modelRelation = $this->$method();
+            if ($modelRelation instanceof Relation) {
+                return $modelRelation->getRelation();
+            }
+        }
         return $value;
     }
 
