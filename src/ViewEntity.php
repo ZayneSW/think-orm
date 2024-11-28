@@ -14,7 +14,8 @@ declare (strict_types = 1);
 namespace think;
 
 /**
- * Class View.
+ * Class ViewEntity.
+ * 视图实体模型
  */
 abstract class ViewEntity extends Entity
 {

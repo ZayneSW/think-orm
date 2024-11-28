@@ -83,6 +83,20 @@ abstract class Entity implements JsonSerializable, ArrayAccess, Arrayable, Jsona
             'relation_keys' => $options['relation_keys'] ?? [],
         ];
 
+        // 设置模型
+        $this->initModel($model);
+        // 初始化模型数据
+        $this->initializeData($data);
+    }
+
+    /**
+     * 初始化模型.
+     * @param Model $model 模型对象
+     *
+     * @return void
+     */
+    protected function initModel(?Model $model = null)
+    {
         // 获取对应模型对象
         if (is_null($model)) {
             if ($this->isView()) {
@@ -93,16 +107,13 @@ abstract class Entity implements JsonSerializable, ArrayAccess, Arrayable, Jsona
             }
         }
 
-        self::$weakMap[$this]['model'] = $model;
-
         if ($model instanceof Model) {
             $model->setEntity($this);
         } else {
             $model->model($this);
         }
 
-        // 初始化模型数据
-        $this->initializeData($data);
+        self::$weakMap[$this]['model'] = $model;        
     }
 
     /**
@@ -113,14 +124,6 @@ abstract class Entity implements JsonSerializable, ArrayAccess, Arrayable, Jsona
     protected function getOptions(): array
     {
         return [];
-    }
-
-    protected function getOption(string $name)
-    {
-        if (property_exists($this, $name)) {
-            return $this->$name;
-        }
-        return self::$weakMap[$this][$name] ?? null;
     }
 
     /**
@@ -1045,6 +1048,12 @@ abstract class Entity implements JsonSerializable, ArrayAccess, Arrayable, Jsona
         return self::$weakMap[$this]['data'][$name] ?? null;
     }
 
+    /**
+     * 构建实体模型查询.
+     *
+     * @param Query $query 查询对象
+     * @return void
+     */
     protected function query(Query $query)
     {
     }
@@ -1182,7 +1191,7 @@ abstract class Entity implements JsonSerializable, ArrayAccess, Arrayable, Jsona
 
         $db = $model->isView() ? $model->model() : $model->model()->db();
 
-        // 执行额外查询
+        // 执行扩展查询
         $model->query($db);
 
         if (!empty(self::$weakMap[$model]['auto_relation'])) {
