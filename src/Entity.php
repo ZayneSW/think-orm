@@ -99,7 +99,7 @@ abstract class Entity implements JsonSerializable, ArrayAccess, Arrayable, Jsona
     {
         // 获取对应模型对象
         if (is_null($model)) {
-            if ($this->isView()) {
+            if ($this->isView() || $this->isVirtual()) {
                 $model = Db::newQuery();
             } else {
                 $class = $this->parseModel();
@@ -369,11 +369,15 @@ abstract class Entity implements JsonSerializable, ArrayAccess, Arrayable, Jsona
                 $schema[$name] = $type;
             }
 
-            if (empty($schema) && !$this->isView()) {
-                // 获取数据表信息
-                $model  = self::$weakMap[$this]['model'];
-                $fields = $model->getFieldsType($model->getTable());
-                $schema = array_merge($fields, self::$weakMap[$this]['type'] ?: $model->getType());
+            if (empty($schema)) {
+                if ($this->isView() || $this->isVirtual()) {
+                    $schema = self::$weakMap[$this]['type'] ?:[];
+                } else {
+                    // 获取数据表信息
+                    $model  = self::$weakMap[$this]['model'];
+                    $fields = $model->getFieldsType($model->getTable());
+                    $schema = array_merge($fields, self::$weakMap[$this]['type'] ?: $model->getType());                    
+                }
             }
 
             self::$_schema[static::class] = $schema;
