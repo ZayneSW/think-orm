@@ -309,6 +309,20 @@ abstract class BaseQuery
     }
 
     /**
+     * 设置字段类型信息.
+     *
+     * @param array $schema 字段类型信息
+     *
+     * @return $this
+     */
+    public function schema(array $schema)
+    {
+        $this->options['field_type'] = $schema;
+
+        return $this;
+    }
+
+    /**
      * 设置只读字段.
      *
      * @param array $fields 只读字段
