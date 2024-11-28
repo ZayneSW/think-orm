@@ -189,7 +189,7 @@ abstract class Entity implements JsonSerializable, ArrayAccess, Arrayable, Jsona
                 $this->model()->exists(true);
             }
 
-            if (in_array($trueName, $fields)) {
+            if ($this->isView() || in_array($trueName, $fields)) {
                 // 读取数据后进行类型转换
                 $value = $this->readTransform($val, $schema[$trueName] ?? 'string');
                 // 数据赋值
