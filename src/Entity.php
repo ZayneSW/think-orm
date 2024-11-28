@@ -70,6 +70,7 @@ abstract class Entity implements JsonSerializable, ArrayAccess, Arrayable, Jsona
             'allow'         => [],
             'update_time'   => $options['update_time'] ?? 'update_time',
             'create_time'   => $options['create_time'] ?? 'create_time',
+            'model_class'   => $options['model_class'] ?? '',
             'type'          => $options['type'] ?? [],
             'virtual'       => $options['virtual'] ?? false,
             'view'          => $options['view'] ?? false,
@@ -134,7 +135,7 @@ abstract class Entity implements JsonSerializable, ArrayAccess, Arrayable, Jsona
      */
     protected function parseModel(): string
     {
-        return str_replace('\\entity', '\\model', static::class);
+        return self::$weakMap[$this]['model_class'] ?: str_replace('\\entity', '\\model', static::class);
     }
 
     /**
