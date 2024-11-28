@@ -11,13 +11,15 @@
 // +----------------------------------------------------------------------
 declare (strict_types = 1);
 
-namespace think;
+namespace think\entity;
+
+use think\Entity;
 
 /**
- * Class ViewEntity.
+ * Class View.
  * 视图实体模型
  */
-abstract class ViewEntity extends Entity
+abstract class View extends Entity
 {
     /**
      * 设置为视图模型.
