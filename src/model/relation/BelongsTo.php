@@ -15,7 +15,7 @@ namespace think\model\relation;
 
 use Closure;
 use think\db\BaseQuery as Query;
-use think\Model;
+use think\model\contract\Modelable as Model;
 
 /**
  * BelongsTo关联类.

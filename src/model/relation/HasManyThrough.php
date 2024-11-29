@@ -16,7 +16,7 @@ use Closure;
 use think\Collection;
 use think\db\BaseQuery as Query;
 use think\helper\Str;
-use think\Model;
+use think\model\contract\Modelable as Model;
 use think\model\Relation;
 
 /**

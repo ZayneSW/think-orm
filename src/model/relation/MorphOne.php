@@ -15,7 +15,7 @@ namespace think\model\relation;
 use Closure;
 use think\db\BaseQuery as Query;
 use think\db\exception\DbException as Exception;
-use think\Model;
+use think\model\contract\Modelable as Model;
 use think\model\Relation;
 
 /**

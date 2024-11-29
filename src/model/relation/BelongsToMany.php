@@ -17,7 +17,7 @@ use think\Collection;
 use think\db\BaseQuery as Query;
 use think\db\exception\DbException as Exception;
 use think\db\Raw;
-use think\Model;
+use think\model\contract\Modelable as Model;
 use think\model\Pivot;
 use think\model\Relation;
 

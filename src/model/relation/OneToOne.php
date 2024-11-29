@@ -16,8 +16,9 @@ use Closure;
 use think\db\BaseQuery as Query;
 use think\db\exception\DbException as Exception;
 use think\db\exception\InvalidArgumentException;
+use think\Entity;
 use think\helper\Str;
-use think\Model;
+use think\model\contract\Modelable as Model;
 use think\model\Relation;
 
 /**
@@ -317,26 +318,30 @@ abstract class OneToOne extends Relation
      */
     protected function bindAttr(Model $result, ?Model $model = null): void
     {
-        foreach ($this->bindAttr as $key => $attr) {
-            if (is_numeric($key)) {
-                if (!is_string($attr)) {
-                    throw new InvalidArgumentException('bind attr must be string:' . $key);
+        if ($result instanceof Entity && $model) {
+            $result->bindRelationAttr($model, $this->bindAttr);
+        } else {
+            foreach ($this->bindAttr as $key => $attr) {
+                if (is_numeric($key)) {
+                    if (!is_string($attr)) {
+                        throw new InvalidArgumentException('bind attr must be string:' . $key);
+                    }
+
+                    $key = $attr;
                 }
 
-                $key = $attr;
-            }
+                if (null !== $result->getOrigin($key)) {
+                    throw new Exception('bind attr has exists:' . $key);
+                }
 
-            if (null !== $result->getOrigin($key)) {
-                throw new Exception('bind attr has exists:' . $key);
-            }
+                if ($attr instanceof Closure) {
+                    $value = $attr($model, $key, $result);
+                } else {
+                    $value = $model?->getAttr($attr);
+                }
 
-            if ($attr instanceof Closure) {
-                $value = $attr($model, $key, $result);
-            } else {
-                $value = $model?->getAttr($attr);
-            }
-
-            $result->setAttr($key, $value);
+                $result->setAttr($key, $value);
+            }            
         }
     }
 

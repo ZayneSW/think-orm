@@ -17,7 +17,7 @@ use Closure;
 use think\db\exception\DbException as Exception;
 use think\db\Query;
 use think\helper\Str;
-use think\Model;
+use think\model\contract\Modelable as Model;
 use think\model\Relation;
 
 /**

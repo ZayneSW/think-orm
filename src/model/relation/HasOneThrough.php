@@ -13,7 +13,7 @@
 namespace think\model\relation;
 
 use Closure;
-use think\Model;
+use think\model\contract\Modelable as Model;
 
 /**
  * 远程一对一关联类.

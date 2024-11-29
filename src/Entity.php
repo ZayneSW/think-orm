@@ -866,10 +866,14 @@ abstract class Entity implements JsonSerializable, ArrayAccess, Arrayable, Jsona
     /**
      * 获取模型数据.
      *
+     * @param bool $onlyAttr 是否仅获取属性数据
      * @return array
      */
-    public function getData(): array
+    public function getData(bool $onlyAttr = false): array
     {
+        if ($onlyAttr) {
+            return get_object_vars($this);
+        }
         return array_merge(get_object_vars($this), self::$weakMap[$this]['data']);
     }
 
@@ -1133,8 +1137,10 @@ abstract class Entity implements JsonSerializable, ArrayAccess, Arrayable, Jsona
      */
     public function __set(string $name, $value): void
     {
-        if ($value instanceof Entity) {
-            $this->bindRelationAttr($name, $value);
+        if ($value instanceof Entity && !empty(self::$weakMap[$this]['bind_attr'])) {
+            // 关联属性绑定
+            $bind = self::$weakMap[$this]['bind_attr'][$name] ?? [];
+            $this->bindRelationAttr($value, $bind);
         } else {
             $this->set($name, $value);
         }
@@ -1143,25 +1149,18 @@ abstract class Entity implements JsonSerializable, ArrayAccess, Arrayable, Jsona
     /**
      * 设置关联绑定数据
      *
-     * @param string $name  名称
-     * @param mixed  $value 值
-     *
+     * @param Entity $entity 关联实体对象
+     * @param array  $bind  绑定属性
      * @return void
      */
-    protected function bindRelationAttr($name, $value)
+    public function bindRelationAttr($entity, $bind = [])
     {
-        if (!empty(self::$weakMap[$this]['bind_attr'])) {
-            // 自动绑定关联属性
-            $bind = self::$weakMap[$this]['bind_attr'][$name] ?? [];
-            foreach ($value->getData() as $key => $val) {
-                if (isset($bind[$key])) {
-                    $this->set($bind[$key], $val);
-                } elseif (!$this->__isset($key)) {
-                    $this->set($key, $val);
-                }
+        foreach ($entity->getData() as $key => $val) {
+            if (isset($bind[$key])) {
+                $this->set($bind[$key], $val);
+            } elseif ((true === $bind || in_array($key, $bind)) && !$this->__isset($key)) {
+                $this->set($key, $val);
             }
-        } else {
-            $this->set($name, $value);
         }
     }
 
