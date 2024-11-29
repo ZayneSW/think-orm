@@ -71,6 +71,8 @@ abstract class Entity implements JsonSerializable, ArrayAccess, Arrayable, Jsona
             'update_time'   => $options['update_time'] ?? 'update_time',
             'create_time'   => $options['create_time'] ?? 'create_time',
             'model_class'   => $options['model_class'] ?? '',
+            'table_name'    => $options['table_name'] ?? '',
+            'pk'            => $options['pk'] ?? '',
             'type'          => $options['type'] ?? [],
             'virtual'       => $options['virtual'] ?? false,
             'view'          => $options['view'] ?? false,
@@ -81,6 +83,7 @@ abstract class Entity implements JsonSerializable, ArrayAccess, Arrayable, Jsona
             'append'        => $options['append'] ?? [],
             'mapping'       => $options['mapping'] ?? [],
             'strict'        => $options['strict'] ?? true,
+            'bind_attr'     => $options['bind_attr'] ?? [],
             'auto_relation' => $options['auto_relation'] ?? [],
             'relation_keys' => $options['relation_keys'] ?? [],
         ];
@@ -103,6 +106,8 @@ abstract class Entity implements JsonSerializable, ArrayAccess, Arrayable, Jsona
         if (is_null($model)) {
             if ($this->isView() || $this->isVirtual()) {
                 $model = Db::newQuery();
+            } elseif (self::$weakMap[$this]['table_name']) {
+                $model = Db::newQuery()->name(self::$weakMap[$this]['table_name']);
             } else {
                 $class = $this->parseModel();
                 $model = new $class;
@@ -191,7 +196,6 @@ abstract class Entity implements JsonSerializable, ArrayAccess, Arrayable, Jsona
             if (!$this->isView() && $this->model()->getPk() == $trueName) {
                 // 记录主键值
                 $this->model()->setKey($val);
-                $this->model()->exists(true);
             }
 
             if ($this->isView() || in_array($trueName, $fields)) {
@@ -990,6 +994,7 @@ abstract class Entity implements JsonSerializable, ArrayAccess, Arrayable, Jsona
                 $name = $key;
             }
         }
+
         $name = $this->getRealFieldName($name);
         if (property_exists($this, $name)) {
             $this->$name = $value;
@@ -1128,7 +1133,36 @@ abstract class Entity implements JsonSerializable, ArrayAccess, Arrayable, Jsona
      */
     public function __set(string $name, $value): void
     {
-        $this->set($name, $value);
+        if ($value instanceof Entity) {
+            $this->bindRelationAttr($name, $value);
+        } else {
+            $this->set($name, $value);
+        }
+    }
+
+    /**
+     * 设置关联绑定数据
+     *
+     * @param string $name  名称
+     * @param mixed  $value 值
+     *
+     * @return void
+     */
+    protected function bindRelationAttr($name, $value)
+    {
+        if (!empty(self::$weakMap[$this]['bind_attr'])) {
+            // 自动绑定关联属性
+            $bind = self::$weakMap[$this]['bind_attr'][$name] ?? [];
+            foreach ($value->getData() as $key => $val) {
+                if (isset($bind[$key])) {
+                    $this->set($bind[$key], $val);
+                } elseif (!$this->__isset($key)) {
+                    $this->set($key, $val);
+                }
+            }
+        } else {
+            $this->set($name, $value);
+        }
     }
 
     /**
@@ -1213,7 +1247,8 @@ abstract class Entity implements JsonSerializable, ArrayAccess, Arrayable, Jsona
             throw new Exception('virtual model not support db query');
         }
 
-        $db = $model->isView() ? $model->model() : $model->model()->db();
+        $db = $model->model();
+        $db = $db instanceof Query ? $db : $db->db();
 
         // 执行扩展查询
         $model->query($db);

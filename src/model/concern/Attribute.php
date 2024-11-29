@@ -219,6 +219,7 @@ trait Attribute
         $pk = $this->getPk();
         if (is_string($pk)) {
             $this->key = $value;
+            $this->exists = true;
         }
     }
 
