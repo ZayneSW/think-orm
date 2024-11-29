@@ -20,7 +20,7 @@ use think\db\exception\BindParamException;
 use think\db\exception\DbEventException;
 use think\db\exception\DbException;
 use think\db\exception\PDOException;
-use think\Model;
+use think\model\contract\Modelable as Model;
 
 /**
  * 数据库连接基础类.

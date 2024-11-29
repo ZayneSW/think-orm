@@ -20,7 +20,7 @@ use think\db\exception\DbException;
 use think\db\exception\ModelNotFoundException;
 use think\db\Query;
 use think\helper\Str;
-use think\Model;
+use think\model\contract\Modelable as Model;
 
 /**
  * 查询数据处理.
