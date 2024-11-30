@@ -9,7 +9,7 @@
 // +----------------------------------------------------------------------
 // | Author: liu21st <liu21st@gmail.com>
 // +----------------------------------------------------------------------
-declare(strict_types=1);
+declare (strict_types = 1);
 
 namespace think\db\concern;
 
@@ -27,15 +27,11 @@ trait TableFieldInfo
      */
     public function getTableFields(string $tableName = ''): array
     {
-        if ('' == $tableName) {
-            $tableName = $this->getTable();
-        }
-
-        if (!empty($this->options['field_type'])) {
+        if ('' == $tableName && !empty($this->options['field_type'])) {
             return array_keys($this->options['field_type']);
         }
 
-        return $this->connection->getTableFields($tableName);
+        return $this->connection->getTableFields($tableName ?: $this->getTable());
     }
 
     /**

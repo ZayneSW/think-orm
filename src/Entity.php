@@ -66,6 +66,7 @@ abstract class Entity implements JsonSerializable, ArrayAccess, Arrayable, Jsona
             'data'          => [],
             'schema'        => [],
             'origin'        => [],
+            'relation'      => [],
             'together'      => [],
             'allow'         => [],
             'update_time'   => $options['update_time'] ?? 'update_time',
@@ -222,9 +223,11 @@ abstract class Entity implements JsonSerializable, ArrayAccess, Arrayable, Jsona
                 $relation = $this->getRealFieldName($relation);
                 $type     = $schema[$relation] ?? 'string';
                 if (is_subclass_of($type, Entity::class)) {
+                    // 明确类型直接设置关联属性
                     $this->$relation = new $type($val);
                 } else {
-                    $this->$relation = new \stdClass($val);
+                    // 寄存关联数据
+                    $this->setRelation($relation, $val);
                 }
             }
         }
@@ -232,6 +235,31 @@ abstract class Entity implements JsonSerializable, ArrayAccess, Arrayable, Jsona
         if (!empty($origin) && !$fromSave) {
             $this->setWeak('origin', $origin);
         }
+    }
+
+    /**
+     * 寄存关联数据.
+     *
+     * @param string $relation 关联属性
+     * @param array  $data  关联数据
+     *
+     * @return void
+     */
+    protected function setRelation(string $relation, array $data)
+    {
+        self::$weakMap[$this]['relation'][$relation] = $data;
+    }
+
+    /**
+     * 获取寄存的关联数据.
+     *
+     * @param string $relation 关联属性
+     *
+     * @return array
+     */
+    public function getRelation(string $relation)
+    {
+        return self::$weakMap[$this]['relation'][$relation] ?? [];
     }
 
     protected function setWeak($name, $value)

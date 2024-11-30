@@ -92,9 +92,9 @@ abstract class OneToOne extends Relation
         }
 
         // 预载入封装
-        $joinTable  = $this->query->getTable();
-        $joinAlias  = Str::snake($relation);
-        $joinType   = $joinType ?: $this->joinType;
+        $joinTable = $this->query->getTable();
+        $joinAlias = Str::snake($relation);
+        $joinType  = $joinType ?: $this->joinType;
 
         $query->via($joinAlias);
 
@@ -196,9 +196,7 @@ abstract class OneToOne extends Relation
     {
         if ($join) {
             // 模型JOIN关联组装
-            if (!$result->getEntity()) {
-                $this->match($this->model, $relation, $result);
-            }
+            $this->match($this->model, $relation, $result);
         } else {
             // IN查询
             $this->eagerlyOne($result, $relation, $subRelation, $closure, $cache);
@@ -213,7 +211,7 @@ abstract class OneToOne extends Relation
      *
      * @return Model|false
      */
-    public function save(array|Model $data, bool $replace = true)
+    public function save(array | Model $data, bool $replace = true)
     {
         $model = $this->make();
 
@@ -227,7 +225,7 @@ abstract class OneToOne extends Relation
      *
      * @return Model
      */
-    public function make(array|Model $data = []): Model
+    public function make(array | Model $data = []): Model
     {
         if ($data instanceof Model) {
             $data = $data->getData();
@@ -274,36 +272,44 @@ abstract class OneToOne extends Relation
      */
     protected function match(string $model, string $relation, Model $result): void
     {
-        // 重新组装模型数据
-        foreach ($result->getData() as $key => $val) {
-            if (str_contains($key, '__')) {
-                [$name, $attr] = explode('__', $key, 2);
-                if ($name == Str::snake($relation)) {
-                    $list[$relation][$attr] = $val;
-                    unset($result->$key);
-                }
-            }
-        }
-
-        if (isset($list[$relation])) {
-            $array = array_unique($list[$relation]);
-
-            if (count($array) == 1 && null === current($array)) {
-                $relationModel = null;
-            } else {
-                $relationModel = new $model($list[$relation]);
-                $relationModel->setParent(clone $result);
-                $relationModel->exists(true);
-            }
-
-            if (!empty($this->bindAttr)) {
-                $this->bindAttr($result, $relationModel);
+        if ($result->getEntity()) {
+            $data = $result->getEntity()->getRelation($relation);
+            if (!empty($data)) {
+                $relationModel = (new $model())->newInstance($data);
+                $result->setRelation($relation, $relationModel);
             }
         } else {
-            $relationModel = null;
-        }
+            // 重新组装模型数据
+            foreach ($result->getData() as $key => $val) {
+                if (str_contains($key, '__')) {
+                    [$name, $attr] = explode('__', $key, 2);
+                    if (Str::snake($relation) == $name) {
+                        $list[$relation][$attr] = $val;
+                        unset($result->$key);
+                    }
+                }
+            }
 
-        $result->setRelation($relation, $relationModel);
+            if (isset($list[$relation])) {
+                $array = array_unique($list[$relation]);
+
+                if (count($array) == 1 && null === current($array)) {
+                    $relationModel = null;
+                } else {
+                    $relationModel = new $model($list[$relation]);
+                    $relationModel->setParent(clone $result);
+                    $relationModel->exists(true);
+                }
+
+                if (!empty($this->bindAttr)) {
+                    $this->bindAttr($result, $relationModel);
+                }
+            } else {
+                $relationModel = null;
+            }
+
+            $result->setRelation($relation, $relationModel);
+        }
     }
 
     /**
@@ -341,7 +347,7 @@ abstract class OneToOne extends Relation
                 }
 
                 $result->setAttr($key, $value);
-            }            
+            }
         }
     }
 

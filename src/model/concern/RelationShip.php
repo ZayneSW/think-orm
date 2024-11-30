@@ -19,7 +19,7 @@ use think\db\BaseQuery as Query;
 use think\db\exception\DbException as Exception;
 use think\db\exception\InvalidArgumentException;
 use think\helper\Str;
-use think\Model;
+use think\model\contract\Modelable as Model;
 use think\model\Relation;
 use think\model\relation\BelongsTo;
 use think\model\relation\BelongsToMany;
@@ -109,6 +109,10 @@ trait RelationShip
     {
         if (is_null($name)) {
             return $this->relation;
+        }
+
+        if ($this->entity) {
+            return $this->entity->$name;
         }
 
         if (array_key_exists($name, $this->relation)) {
