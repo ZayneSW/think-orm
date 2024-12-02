@@ -1230,8 +1230,7 @@ abstract class Entity implements JsonSerializable, ArrayAccess, Arrayable, Jsona
      */
     public function __set(string $name, $value): void
     {
-        $bind = $this->getBindAttr(self::$weakMap[$this]['bind_attr'], $name);
-        if ($value instanceof Entity && $bind) {
+        if ($value instanceof Entity && $bind = $this->getBindAttr(self::$weakMap[$this]['bind_attr'], $name)) {
             // 关联属性绑定
             $this->bindRelationAttr($value, $bind);
         } else {
