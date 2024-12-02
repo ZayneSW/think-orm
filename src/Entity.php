@@ -133,6 +133,66 @@ abstract class Entity implements JsonSerializable, ArrayAccess, Arrayable, Jsona
     }
 
     /**
+     * 获取数据表字段列表.
+     *
+     * @return array|string
+     */
+    protected function getFields(?string $field = null)
+    {
+        if (isset(self::$_schema[static::class])) {
+            $schema = self::$_schema[static::class];
+        } else {
+            $class     = new ReflectionClass($this);
+            $propertys = $class->getProperties(ReflectionProperty::IS_PUBLIC | ReflectionProperty::IS_PROTECTED);
+            $schema    = [];
+
+            foreach ($propertys as $property) {
+                $name = $this->getRealFieldName($property->getName());
+                $type = $property->hasType() ? $property->getType()->getName() : 'string';
+
+                $schema[$name] = $type;
+            }
+
+            if (empty($schema)) {
+                if ($this->isView() || $this->isVirtual()) {
+                    $schema = self::$weakMap[$this]['type'] ?: [];
+                } else {
+                    // 获取数据表信息
+                    $model  = self::$weakMap[$this]['model'];
+                    $fields = $model->getFieldsType();
+                    $schema = array_merge($fields, self::$weakMap[$this]['type'] ?: $model->getType());
+                }
+            }
+
+            self::$_schema[static::class] = $schema;
+        }
+
+        if ($field) {
+            return $schema[$field] ?? 'string';
+        }
+
+        return $schema;
+    }
+
+    /**
+     * 解析模型数据.
+     *
+     * @param array|object $data 数据
+     *
+     * @return array
+     */
+    protected function parseData(array | object $data): array
+    {
+        if ($data instanceof Model) {
+            $data = array_merge($data->getData(), $data->getRelation());
+        } elseif (is_object($data)) {
+            $data = get_object_vars($data);
+        }
+
+        return $data;
+    }
+
+    /**
      * 在实体模型中定义 返回相关配置参数.
      *
      * @return array
@@ -219,21 +279,30 @@ abstract class Entity implements JsonSerializable, ArrayAccess, Arrayable, Jsona
 
         if (!empty($relations)) {
             // 设置关联数据
-            foreach ($relations as $relation => $val) {
-                $relation = $this->getRealFieldName($relation);
-                $type     = $schema[$relation] ?? 'string';
-                if (is_subclass_of($type, Entity::class)) {
-                    // 明确类型直接设置关联属性
-                    $this->$relation = new $type($val);
-                } else {
-                    // 寄存关联数据
-                    $this->setRelation($relation, $val);
-                }
-            }
+            $this->parseRelationData($relations, $schema);
         }
 
         if (!empty($origin) && !$fromSave) {
             $this->setWeak('origin', $origin);
+        }
+    }
+
+    protected function parseRelationData(array $relations, array $schema)
+    {
+        foreach ($relations as $relation => $val) {
+            $relation = $this->getRealFieldName($relation);
+            $type     = $schema[$relation] ?? 'string';
+            $bind     = $this->getBindAttr(self::$weakMap[$this]['bind_attr'], $relation);
+            if (!empty($bind)) {
+                // 绑定关联属性
+                $this->bindRelationAttr($val, $bind);
+            } elseif (is_subclass_of($type, Entity::class)) {
+                // 明确类型直接设置关联属性
+                $this->$relation = new $type($val);
+            } else {
+                // 寄存关联数据
+                $this->setRelation($relation, $val);
+            }
         }
     }
 
@@ -388,66 +457,6 @@ abstract class Entity implements JsonSerializable, ArrayAccess, Arrayable, Jsona
             'timestamp' => $typeTransform(Json::class, $value, $this),
             default     => $typeTransform($type, $value, $this),
         };
-    }
-
-    /**
-     * 获取数据表字段列表.
-     *
-     * @return array|string
-     */
-    protected function getFields(?string $field = null)
-    {
-        if (isset(self::$_schema[static::class])) {
-            $schema = self::$_schema[static::class];
-        } else {
-            $class     = new ReflectionClass($this);
-            $propertys = $class->getProperties(ReflectionProperty::IS_PUBLIC | ReflectionProperty::IS_PROTECTED);
-            $schema    = [];
-
-            foreach ($propertys as $property) {
-                $name = $this->getRealFieldName($property->getName());
-                $type = $property->hasType() ? $property->getType()->getName() : 'string';
-
-                $schema[$name] = $type;
-            }
-
-            if (empty($schema)) {
-                if ($this->isView() || $this->isVirtual()) {
-                    $schema = self::$weakMap[$this]['type'] ?: [];
-                } else {
-                    // 获取数据表信息
-                    $model  = self::$weakMap[$this]['model'];
-                    $fields = $model->getFieldsType($model->getTable());
-                    $schema = array_merge($fields, self::$weakMap[$this]['type'] ?: $model->getType());
-                }
-            }
-
-            self::$_schema[static::class] = $schema;
-        }
-
-        if ($field) {
-            return $schema[$field] ?? 'string';
-        }
-
-        return $schema;
-    }
-
-    /**
-     * 解析模型数据.
-     *
-     * @param array|object $data 数据
-     *
-     * @return array
-     */
-    protected function parseData(array | object $data): array
-    {
-        if ($data instanceof Model) {
-            $data = array_merge($data->getData(), $data->getRelation());
-        } elseif (is_object($data)) {
-            $data = get_object_vars($data);
-        }
-
-        return $data;
     }
 
     /**
@@ -1187,13 +1196,14 @@ abstract class Entity implements JsonSerializable, ArrayAccess, Arrayable, Jsona
     /**
      * 设置关联绑定数据
      *
-     * @param Entity $entity 关联实体对象
+     * @param Entity|array $entity 关联实体对象
      * @param array|bool  $bind  绑定属性
      * @return void
      */
     public function bindRelationAttr($entity, $bind = [])
     {
-        foreach ($entity->getData() as $key => $val) {
+        $data = is_array($entity) ? $entity : $entity->getData();
+        foreach ($data as $key => $val) {
             if (isset($bind[$key])) {
                 $this->set($bind[$key], $val);
             } elseif ((true === $bind || in_array($key, $bind)) && !$this->__isset($key)) {

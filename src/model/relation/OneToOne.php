@@ -276,7 +276,11 @@ abstract class OneToOne extends Relation
             $data = $result->getEntity()->getRelation($relation);
             if (!empty($data)) {
                 $relationModel = (new $model())->newInstance($data);
-                $result->setRelation($relation, $relationModel);
+                if ($this->bindAttr) {
+                    $result->getEntity()->bindRelationAttr($data, $this->bindAttr);
+                } else {
+                    $result->setRelation($relation, $relationModel);
+                }
             }
         } else {
             // 重新组装模型数据
