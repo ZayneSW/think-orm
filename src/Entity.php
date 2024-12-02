@@ -15,6 +15,7 @@ namespace think;
 
 use ArrayAccess;
 use BackedEnum;
+use InvalidArgumentException;
 use JsonSerializable;
 use ReflectionClass;
 use ReflectionProperty;
@@ -24,6 +25,7 @@ use think\contract\Jsonable;
 use think\db\BaseQuery as Query;
 use think\db\exception\DbException as Exception;
 use think\db\Raw;
+use think\exception\ValidateException;
 use think\facade\Db;
 use think\helper\Str;
 use think\model\Collection;
@@ -74,6 +76,7 @@ abstract class Entity implements JsonSerializable, ArrayAccess, Arrayable, Jsona
             'model_class'   => $options['model_class'] ?? '',
             'table_name'    => $options['table_name'] ?? '',
             'pk'            => $options['pk'] ?? '',
+            'validate'      => $options['validate'] ?? '',
             'type'          => $options['type'] ?? [],
             'virtual'       => $options['virtual'] ?? false,
             'view'          => $options['view'] ?? false,
@@ -603,6 +606,29 @@ abstract class Entity implements JsonSerializable, ArrayAccess, Arrayable, Jsona
     }
 
     /**
+     * 验证模型数据.
+     *
+     * @param array $data 数据
+     * @param array $allow 需要验证的字段
+     * 
+     * @throws InvalidArgumentException
+     * @return void
+     */
+    protected function validate(array $data, array $allow)
+    {
+        if (!empty(self::$weakMap[$this]['validate']) && class_exists('think\validate')) {
+            try {
+                validate(self::$weakMap[$this]['validate'])
+                    ->scene($allow)
+                    ->check($data);
+            } catch (ValidateException $e) {
+                // 验证失败 输出错误信息
+                throw new InvalidArgumentException($e->getError());
+            }
+        }
+    }
+
+    /**
      * 保存模型实例数据.
      *
      * @param array|object $data 数据
@@ -625,6 +651,10 @@ abstract class Entity implements JsonSerializable, ArrayAccess, Arrayable, Jsona
         $readonly = $this->getWeakData('readonly');
         $disuse   = $this->getWeakData('disuse');
         $allow    = array_diff($allow, $readonly, $disuse);
+
+        // 验证数据
+        $this->validate($data, $allow);
+
         $isUpdate = $this->model()->getKey() && !$this->model()->isForce();
 
         foreach ($data as $name => &$val) {
