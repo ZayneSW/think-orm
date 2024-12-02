@@ -76,7 +76,7 @@ abstract class Entity implements JsonSerializable, ArrayAccess, Arrayable, Jsona
             'model_class'   => $options['model_class'] ?? '',
             'table_name'    => $options['table_name'] ?? '',
             'pk'            => $options['pk'] ?? '',
-            'validate'      => $options['validate'] ?? '',
+            'validate'      => $options['validate'] ?? $this->parseValidate(),
             'type'          => $options['type'] ?? [],
             'virtual'       => $options['virtual'] ?? false,
             'view'          => $options['view'] ?? false,
@@ -213,6 +213,17 @@ abstract class Entity implements JsonSerializable, ArrayAccess, Arrayable, Jsona
     protected function parseModel(): string
     {
         return self::$weakMap[$this]['model_class'] ?: str_replace('\\entity', '\\model', static::class);
+    }
+
+    /**
+     * 解析对应验证类.
+     *
+     * @return string
+     */
+    protected function parseValidate(): string
+    {
+        $validate = str_replace('\\entity', '\\validate', static::class);
+        return class_exists($validate) ? $validate : '';
     }
 
     /**
@@ -610,7 +621,7 @@ abstract class Entity implements JsonSerializable, ArrayAccess, Arrayable, Jsona
      *
      * @param array $data 数据
      * @param array $allow 需要验证的字段
-     * 
+     *
      * @throws InvalidArgumentException
      * @return void
      */
