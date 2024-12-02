@@ -75,7 +75,7 @@ abstract class Entity implements JsonSerializable, ArrayAccess, Arrayable, Jsona
             'create_time'   => $options['create_time'] ?? 'create_time',
             'model_class'   => $options['model_class'] ?? '',
             'table_name'    => $options['table_name'] ?? '',
-            'pk'            => $options['pk'] ?? '',
+            'pk'            => $options['pk'] ?? 'id',
             'validate'      => $options['validate'] ?? $this->parseValidate(),
             'type'          => $options['type'] ?? [],
             'virtual'       => $options['virtual'] ?? false,
@@ -103,6 +103,11 @@ abstract class Entity implements JsonSerializable, ArrayAccess, Arrayable, Jsona
         return self::$weakMap[$this]['table_name'] ?? '';
     }
 
+    protected function getPk(): string
+    {
+        return self::$weakMap[$this]['pk'] ?? '';
+    }
+
     /**
      * 初始化模型.
      * @param Model $model 模型对象
@@ -118,7 +123,7 @@ abstract class Entity implements JsonSerializable, ArrayAccess, Arrayable, Jsona
                 $model = Db::newQuery();
             } elseif ($this->getTableName()) {
                 // 绑定数据表 仅限单表查询 不支持关联
-                $model = Db::newQuery()->name($this->getTableName());
+                $model = Db::newQuery()->name($this->getTableName())->pk($this->getPk());
             } else {
                 // 绑定模型
                 $class = $this->parseModel();
@@ -301,11 +306,18 @@ abstract class Entity implements JsonSerializable, ArrayAccess, Arrayable, Jsona
         }
     }
 
-    protected function parseRelationData(array $relations, array $schema)
+    /**
+     * 设置关联数据.
+     *
+     * @param array $relations 关联数据
+     *
+     * @return void
+     */
+    protected function parseRelationData(array $relations)
     {
         foreach ($relations as $relation => $val) {
             $relation = $this->getRealFieldName($relation);
-            $type     = $schema[$relation] ?? 'string';
+            $type     = $this->getFields($relation);
             $bind     = $this->getBindAttr(self::$weakMap[$this]['bind_attr'], $relation);
             if (!empty($bind)) {
                 // 绑定关联属性
@@ -340,7 +352,7 @@ abstract class Entity implements JsonSerializable, ArrayAccess, Arrayable, Jsona
      *
      * @return array
      */
-    public function getRelation(string $relation)
+    public function getRelation(string $relation): array
     {
         return self::$weakMap[$this]['relation'][$relation] ?? [];
     }
@@ -1143,6 +1155,7 @@ abstract class Entity implements JsonSerializable, ArrayAccess, Arrayable, Jsona
                 return $modelRelation->getRelation();
             }
         }
+
         return $value;
     }
 
@@ -1217,9 +1230,9 @@ abstract class Entity implements JsonSerializable, ArrayAccess, Arrayable, Jsona
      */
     public function __set(string $name, $value): void
     {
-        if ($value instanceof Entity && !empty(self::$weakMap[$this]['bind_attr'])) {
+        $bind = $this->getBindAttr(self::$weakMap[$this]['bind_attr'], $name);
+        if ($value instanceof Entity && $bind) {
             // 关联属性绑定
-            $bind = $this->getBindAttr(self::$weakMap[$this]['bind_attr'], $name);
             $this->bindRelationAttr($value, $bind);
         } else {
             $this->set($name, $value);

@@ -14,7 +14,7 @@ class DateTime implements Typeable
     public static function from(mixed $value, Modelable $model)
     {
         $static = new static();
-        $static->data($value, $model->getDateFormat());
+        $static->data($value, 'Y-m-d H:i:s');
         return $static;
     }
 
