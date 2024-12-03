@@ -60,12 +60,12 @@ class HasManyThrough extends Relation
     {
         $this->parent     = $parent;
         $this->model      = $model;
-        $this->through    = $through::instance()->db();
+        $this->through    = (new $through())->newInstance()->db();
         $this->foreignKey = $foreignKey;
         $this->throughKey = $throughKey;
         $this->localKey   = $localKey;
         $this->throughPk  = $throughPk;
-        $this->query      = $model::instance()->db();
+        $this->query      = (new $model())->newInstance()->db();
     }
 
     /**

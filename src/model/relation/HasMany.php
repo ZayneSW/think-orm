@@ -38,7 +38,7 @@ class HasMany extends Relation
         $this->model      = $model;
         $this->foreignKey = $foreignKey;
         $this->localKey   = $localKey;
-        $this->query      = $model::instance()->db();
+        $this->query      = (new $model())->newInstance()->db();
 
         if (get_class($parent) == $model) {
             $this->selfRelation = true;

@@ -84,7 +84,7 @@ class BelongsToMany extends Relation
             $this->middle = $middle;
         }
 
-        $this->query = $model::instance()->db();
+        $this->query = (new $model())->newInstance()->db();
         $this->pivot = $this->newPivot();
     }
 

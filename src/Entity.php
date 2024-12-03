@@ -94,10 +94,8 @@ abstract class Entity implements JsonSerializable, ArrayAccess, Arrayable, Jsona
 
         // 设置模型
         $this->initModel($model);
-        if (!empty($data)) {
-            // 初始化模型数据
-            $this->initializeData($data);
-        }
+        // 初始化模型数据
+        $this->initializeData($data);
     }
 
     public static function instance($data)
