@@ -67,7 +67,7 @@ class MorphOne extends Relation
         $this->type         = $type;
         $this->morphKey     = $morphKey;
         $this->morphType    = $morphType;
-        $this->query        = (new $model())->db();
+        $this->query        = $model::instance()->db();
     }
 
     /**

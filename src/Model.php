@@ -331,15 +331,27 @@ abstract class Model implements JsonSerializable, ArrayAccess, Arrayable, Jsonab
      * 创建新的模型实例.
      *
      * @param array $data    数据
+     *
+     * @return Modelable
+     */
+    public static function instance(array $data =[]): Modelable
+    {
+        $class = static::getEntityClass();
+        return new $class($data, $this);        
+    }
+
+    /**
+     * 创建新的模型实例.
+     *
+     * @param array $data    数据
      * @param mixed $where   更新条件
      * @param array $options 参数
      *
-     * @return Model
+     * @return Modelable
      */
     public function newInstance(array $data = [], $where = null, array $options = []): Modelable
     {
-        $class = static::getEntityClass();
-        $model = new $class($data, $this);
+        $model = static::instance($data);
 
         if ($this->connection) {
             $model->setConnection($this->connection);

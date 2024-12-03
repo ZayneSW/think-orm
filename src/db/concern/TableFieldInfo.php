@@ -60,6 +60,11 @@ trait TableFieldInfo
         return $this->connection->getFieldsType($this->getTable());
     }
 
+    public function getType(): array
+    {
+        return $this->getFieldsType();
+    }
+
     /**
      * 获取字段类型信息.
      *

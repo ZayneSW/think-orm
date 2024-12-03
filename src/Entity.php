@@ -94,8 +94,15 @@ abstract class Entity implements JsonSerializable, ArrayAccess, Arrayable, Jsona
 
         // 设置模型
         $this->initModel($model);
-        // 初始化模型数据
-        $this->initializeData($data);
+        if (!empty($data)) {
+            // 初始化模型数据
+            $this->initializeData($data);
+        }
+    }
+
+    public static function instance($data)
+    {
+        return new static($data);
     }
 
     protected function getTableName(): string
@@ -394,14 +401,20 @@ abstract class Entity implements JsonSerializable, ArrayAccess, Arrayable, Jsona
      * 数据读取 类型转换.
      *
      * @param mixed        $value 值
-     * @param string $type  要转换的类型
+     * @param string|arrau $type  要转换的类型
      *
      * @return mixed
      */
-    protected function readTransform($value, string $type)
+    protected function readTransform($value, string | array $type)
     {
         if (is_null($value)) {
             return;
+        }
+
+        if (is_array($type)) {
+            [$type, $param] = $type;
+        } elseif (str_contains($type, ':')) {
+            [$type, $param] = explode(':', $type, 2);
         }
 
         $typeTransform = static function (string $type, $value, $model) {
@@ -424,14 +437,14 @@ abstract class Entity implements JsonSerializable, ArrayAccess, Arrayable, Jsona
         return match ($type) {
             'string' => (string) $value,
             'int'       => (int) $value,
-            'float'     => (float) $value,
+            'float'     => empty($param) ? (float) $value : (float) number_format($value, (int) $param, '.', ''),
             'bool'      => (bool) $value,
             'array'     => empty($value) ? [] : json_decode($value, true),
             'object'    => empty($value) ? new \stdClass() : json_decode($value),
             'json'      => $typeTransform(Json::class, $value, $this),
             'date'      => $typeTransform(Date::class, $value, $this),
             'datetime'  => $typeTransform(DateTime::class, $value, $this),
-            'timestamp' => $typeTransform(Json::class, $value, $this),
+            'timestamp' => $typeTransform(DateTime::class, $value, $this),
             default     => $typeTransform($type, $value, $this),
         };
     }
@@ -444,7 +457,7 @@ abstract class Entity implements JsonSerializable, ArrayAccess, Arrayable, Jsona
      *
      * @return mixed
      */
-    protected function writeTransform($value, string $type)
+    protected function writeTransform($value, string | array $type)
     {
         if (null === $value) {
             return;
@@ -454,10 +467,16 @@ abstract class Entity implements JsonSerializable, ArrayAccess, Arrayable, Jsona
             return $value;
         }
 
+        if (is_array($type)) {
+            [$type, $param] = $type;
+        } elseif (str_contains($type, ':')) {
+            [$type, $param] = explode(':', $type, 2);
+        }
+
         $typeTransform = static function (string $type, $value, $model) {
             if (str_contains($type, '\\') && class_exists($type)) {
                 if (is_subclass_of($type, Typeable::class)) {
-                    $value = $value->value($model);
+                    $value = $value->value();
                 } elseif (is_subclass_of($type, FieldTypeTransform::class)) {
                     $value = $type::set($value, $model);
                 } elseif ($value instanceof BackedEnum) {
@@ -473,14 +492,14 @@ abstract class Entity implements JsonSerializable, ArrayAccess, Arrayable, Jsona
         return match ($type) {
             'string'    => (string) $value,
             'int'       => (int) $value,
-            'float'     => (float) $value,
+            'float'     => empty($param) ? (float) $value : (float) number_format($value, (int) $param, '.', ''),
             'bool'      => (bool) $value,
             'object'    => is_object($value) ? json_encode($value, JSON_FORCE_OBJECT) : $value,
             'array'     => json_encode((array) $value, JSON_UNESCAPED_UNICODE),
             'json'      => $typeTransform(Json::class, $value, $this),
             'date'      => $typeTransform(Date::class, $value, $this),
             'datetime'  => $typeTransform(DateTime::class, $value, $this),
-            'timestamp' => $typeTransform(Json::class, $value, $this),
+            'timestamp' => $typeTransform(DateTime::class, $value, $this),
             default     => $typeTransform($type, $value, $this),
         };
     }
