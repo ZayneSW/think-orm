@@ -38,7 +38,7 @@ class BelongsTo extends OneToOne
         $this->model      = $model;
         $this->foreignKey = $foreignKey;
         $this->localKey   = $localKey;
-        $this->query      = (new $model())->newInstance()->db();
+        $this->query      = (new $model())->db();
         $this->relation   = $relation;
 
         if (get_class($parent) == $model) {

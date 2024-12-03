@@ -333,7 +333,7 @@ class MorphTo extends Relation
         $data   = null;
 
         if (class_exists($model)) {
-            $data = (new $model())->newInstance()->with($subRelation)
+            $data = (new $model())->with($subRelation)
                 ->cache($cache[0] ?? false, $cache[1] ?? null, $cache[2] ?? null)
                 ->find($pk);
 

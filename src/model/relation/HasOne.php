@@ -37,7 +37,7 @@ class HasOne extends OneToOne
         $this->model      = $model;
         $this->foreignKey = $foreignKey;
         $this->localKey   = $localKey;
-        $this->query      = (new $model())->newInstance()->db();
+        $this->query      = (new $model())->db();
 
         if (get_class($parent) == $model) {
             $this->selfRelation = true;

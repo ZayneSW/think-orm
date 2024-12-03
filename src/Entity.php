@@ -15,6 +15,7 @@ namespace think;
 
 use ArrayAccess;
 use BackedEnum;
+use Closure;
 use InvalidArgumentException;
 use JsonSerializable;
 use ReflectionClass;
@@ -71,6 +72,7 @@ abstract class Entity implements JsonSerializable, ArrayAccess, Arrayable, Jsona
             'relation'      => [],
             'together'      => [],
             'allow'         => [],
+            'with_attr'     => [],
             'update_time'   => $options['update_time'] ?? 'update_time',
             'create_time'   => $options['create_time'] ?? 'create_time',
             'model_class'   => $options['model_class'] ?? '',
@@ -375,6 +377,26 @@ abstract class Entity implements JsonSerializable, ArrayAccess, Arrayable, Jsona
     protected function setWeakData($key, $name, $value)
     {
         self::$weakMap[$this][$key][$name] = $value;
+    }
+
+    /**
+     * 设置数据字段获取器.
+     *
+     * @param array $attr     字段获取器定义
+     *
+     * @return $this
+     */
+    public function withFieldAttr(array $attr)
+    {
+        foreach ($attr as $name => $closure) {
+            $name = $this->getRealFieldName($name);
+
+            self::$weakMap[$this]['with_attr'][$name] = $closure;
+        }
+
+        $this->append(array_keys($attr), true);
+
+        return $this;
     }
 
     /**
@@ -1050,19 +1072,9 @@ abstract class Entity implements JsonSerializable, ArrayAccess, Arrayable, Jsona
                 $item = $item->toarray();
             } elseif (!empty($allow) && !in_array($name, $allow)) {
                 unset($data[$name]);
-            } elseif ($item instanceof Typeable) {
-                $item = $item->value();
-            } elseif (is_subclass_of($item, EnumTransform::class)) {
-                $item = $item->value();
-            } elseif (isset(self::$weakMap[$this]['get'][$name])) {
-                $item = self::$weakMap[$this]['get'][$name];
             } else {
-                $method = 'get' . Str::studly($name) . 'Attr';
-                if (method_exists($this, $method)) {
-                    // 使用获取器转换输出
-                    $item = $this->$method($item, $data);
-                    $this->setWeakData('get', $name, $item);
-                }
+                // 通过获取器输出
+                $item = $this->getWithAttr($name, $item);
             }
 
             if (isset(self::$weakMap[$this]['mapping'][$name])) {
@@ -1124,10 +1136,11 @@ abstract class Entity implements JsonSerializable, ArrayAccess, Arrayable, Jsona
      * 获取数据对象的值（使用获取器）
      *
      * @param string $name 名称
+     * @param bool   $relation 自动获取关联数据
      *
      * @return mixed
      */
-    public function get(string $name)
+    public function get(string $name, bool $relation = true)
     {
         if (isset(self::$weakMap[$this]['mapping'][$name])) {
             // 检查字段映射
@@ -1136,22 +1149,46 @@ abstract class Entity implements JsonSerializable, ArrayAccess, Arrayable, Jsona
 
         $name = $this->getRealFieldName($name);
         if (isset(self::$weakMap[$this]['get'][$name])) {
+            // 已经输出的数据直接返回
             return self::$weakMap[$this]['get'][$name];
         }
 
-        $value  = $this->getValue($name);
+        // 通过获取器输出
+        $value = $this->getWithAttr($name, $this->getValue($name));
+
+        $this->setWeakData('get', $name, $value);
+        return $value;
+    }
+
+    /**
+     * 处理数据对象的值
+     *
+     * @param string $name 名称
+     * @param mixed  $value 值
+     *
+     * @return mixed
+     */
+    private function getWithAttr(string $name, $value)
+    {
         $attr   = Str::studly($name);
         $method = 'get' . $attr . 'Attr';
-        if (method_exists($this, $attr) && $get = $this->$attr()['get'] ?? '') {
+        if (isset(self::$weakMap[$this]['with_attr'][$name])) {
+            $closure = self::$weakMap[$this]['with_attr'][$name];
+            if ($closure instanceof Closure) {
+                $value = $closure($value, $this->getData(), $this);
+            }
+        } elseif (method_exists($this, $attr) && $get = $this->$attr()['get'] ?? '') {
             $value = $get($value, $this->getData());
         } elseif (method_exists($this, $method)) {
             $value = $this->$method($value, $this->getData());
+        } elseif ($value instanceof Typeable) {
+            $value = $value->value();
+        } elseif (is_subclass_of($value, EnumTransform::class)) {
+            $value = $value->value();
         } elseif (is_null($value)) {
             // 动态获取关联数据
-            $value = $this->getRelationData($name, $value);
+            $value = $this->getRelationData($name) ?: $value;
         }
-
-        $this->setWeakData('get', $name, $value);
         return $value;
     }
 
@@ -1159,11 +1196,10 @@ abstract class Entity implements JsonSerializable, ArrayAccess, Arrayable, Jsona
      * 获取关联数据
      *
      * @param string $name 名称
-     * @param mixed $value
      *
      * @return mixed
      */
-    protected function getRelationData($name, $value)
+    protected function getRelationData(string $name)
     {
         $method = Str::camel($name);
         if (method_exists($this->model(), $method)) {
@@ -1172,8 +1208,6 @@ abstract class Entity implements JsonSerializable, ArrayAccess, Arrayable, Jsona
                 return $modelRelation->getRelation();
             }
         }
-
-        return $value;
     }
 
     /**
