@@ -15,7 +15,6 @@ namespace think;
 
 use ArrayAccess;
 use BackedEnum;
-use Closure;
 use InvalidArgumentException;
 use JsonSerializable;
 use ReflectionClass;
@@ -1173,17 +1172,13 @@ abstract class Entity implements JsonSerializable, ArrayAccess, Arrayable, Jsona
         $attr   = Str::studly($name);
         $method = 'get' . $attr . 'Attr';
         if (isset(self::$weakMap[$this]['with_attr'][$name])) {
-            $closure = self::$weakMap[$this]['with_attr'][$name];
-            if ($closure instanceof Closure) {
-                $value = $closure($value, $this->getData(), $this);
-            }
+            $callback = self::$weakMap[$this]['with_attr'][$name];
+            $value    = $callback($value, $this->getData(), $this);
         } elseif (method_exists($this, $attr) && $get = $this->$attr()['get'] ?? '') {
             $value = $get($value, $this->getData());
         } elseif (method_exists($this, $method)) {
             $value = $this->$method($value, $this->getData());
-        } elseif ($value instanceof Typeable) {
-            $value = $value->value();
-        } elseif (is_subclass_of($value, EnumTransform::class)) {
+        } elseif ($value instanceof Typeable || is_subclass_of($value, EnumTransform::class)) {
             $value = $value->value();
         } elseif (is_null($value)) {
             // 动态获取关联数据
