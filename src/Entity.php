@@ -79,8 +79,6 @@ abstract class Entity implements JsonSerializable, ArrayAccess, Arrayable, Jsona
             'pk'            => $options['pk'] ?? 'id',
             'validate'      => $options['validate'] ?? $this->parseValidate(),
             'type'          => $options['type'] ?? [],
-            'virtual'       => $options['virtual'] ?? false,
-            'view'          => $options['view'] ?? false,
             'readonly'      => $options['readonly'] ?? [],
             'disuse'        => $options['disuse'] ?? [],
             'hidden'        => $options['hidden'] ?? [],
@@ -127,13 +125,18 @@ abstract class Entity implements JsonSerializable, ArrayAccess, Arrayable, Jsona
             if ($this->isView() || $this->isVirtual()) {
                 // 虚拟或视图模型 无需对应模型
                 $model = Db::newQuery();
-            } elseif ($this->getTableName()) {
-                // 绑定数据表 仅限单表查询 不支持关联
-                $model = Db::newQuery()->name($this->getTableName())->pk($this->getPk());
+            } elseif ($this->isSimple()) {
+                // 简单模型
+                $model = $this->getSimpleModel();
             } else {
                 // 绑定模型
                 $class = $this->parseModel();
-                $model = new $class;
+                if (class_exists($class)) {
+                    $model = new $class;
+                } else {
+                    // 模型不存在 自动设置为简单模型
+                    $model = $this->getSimpleModel();
+                }
             }
         }
 
@@ -144,6 +147,16 @@ abstract class Entity implements JsonSerializable, ArrayAccess, Arrayable, Jsona
         }
 
         self::$weakMap[$this]['model'] = $model;
+    }
+
+    /**
+     * 设置当前实体为简单模型.
+     * 自动获取对应的数据表 不支持关联
+     */
+    protected function getSimpleModel()
+    {
+        return Db::newQuery()->name($this->getTableName() ?: Str::snake(class_basename(static::class)))
+            ->pk($this->getPk());
     }
 
     /**
@@ -712,11 +725,16 @@ abstract class Entity implements JsonSerializable, ArrayAccess, Arrayable, Jsona
         $readonly = $this->getWeakData('readonly');
         $disuse   = $this->getWeakData('disuse');
         $allow    = array_diff($allow, $readonly, $disuse);
+        $model    = $this->model();
 
         // 验证数据
         $this->validate($data, $allow);
 
-        $isUpdate = $this->model()->getKey() && !$this->model()->isForce();
+        if ($model instanceof Model) {
+            $isUpdate = $model->getKey() && !$model->isForce();
+        } else {
+            $isUpdate = $model->getKey() ? true : false;
+        }
 
         foreach ($data as $name => &$val) {
             if ($val instanceof Entity || is_subclass_of($this->getFields($name), Entity::class)) {
@@ -729,17 +747,7 @@ abstract class Entity implements JsonSerializable, ArrayAccess, Arrayable, Jsona
                 // 无需更新字段
                 unset($data[$name]);
             } else {
-                // 统一执行修改器或类型转换后写入
-                $attr   = Str::studly($name);
-                $method = 'set' . $attr . 'Attr';
-                if (method_exists($this, $attr) && $set = $this->$attr()['set'] ?? '') {
-                    $val = $set($val, $data);
-                } elseif (method_exists($this, $method)) {
-                    $val = $this->$method($val, $data);
-                } else {
-                    // 类型转换
-                    $val = $this->writeTransform($val, $this->getFields($name));
-                }
+                $val = $this->setWithAttr($name, $val, $data);
             }
         }
 
@@ -749,7 +757,12 @@ abstract class Entity implements JsonSerializable, ArrayAccess, Arrayable, Jsona
 
         // 自动时间戳处理
         $this->autoDateTime($data, $isUpdate);
-        $result = $this->model()->allowField($allow)->save($data);
+
+        if ($model instanceof Model) {
+            $result = $model->allowField($allow)->save($data);
+        } else {
+            $result = $model->field($allow)->save($data);
+        }
 
         if (false === $result) {
             return false;
@@ -877,7 +890,7 @@ abstract class Entity implements JsonSerializable, ArrayAccess, Arrayable, Jsona
      */
     public function isVirtual(): bool
     {
-        return self::$weakMap[$this]['virtual'];
+        return false;
     }
 
     /**
@@ -887,7 +900,17 @@ abstract class Entity implements JsonSerializable, ArrayAccess, Arrayable, Jsona
      */
     public function isView(): bool
     {
-        return self::$weakMap[$this]['view'];
+        return false;
+    }
+
+    /**
+     * 是否为简单模型（单表操作 不支持关联 不绑定模型）.
+     *
+     * @return bool
+     */
+    public function isSimple(): bool
+    {
+        return false;
     }
 
     /**
@@ -1073,7 +1096,7 @@ abstract class Entity implements JsonSerializable, ArrayAccess, Arrayable, Jsona
                 unset($data[$name]);
             } else {
                 // 通过获取器输出
-                $item = $this->getWithAttr($name, $item);
+                $item = $this->getWithAttr($name, $item, $data);
             }
 
             if (isset(self::$weakMap[$this]['mapping'][$name])) {
@@ -1132,14 +1155,39 @@ abstract class Entity implements JsonSerializable, ArrayAccess, Arrayable, Jsona
     }
 
     /**
-     * 获取数据对象的值（使用获取器）
+     * 使用修改器或类型自动转换处理数据
      *
-     * @param string $name 名称
-     * @param bool   $relation 自动获取关联数据
+     * @param string $name  名称
+     * @param mixed  $value 值
+     * @param array  $data 所有数据
      *
      * @return mixed
      */
-    public function get(string $name, bool $relation = true)
+    private function setWithAttr(string $name, $value, array $data = [])
+    {
+        // 统一执行修改器或类型转换后写入
+        $attr   = Str::studly($name);
+        $method = 'set' . $attr . 'Attr';
+        if (method_exists($this, $attr) && $set = $this->$attr()['set'] ?? '') {
+            $value = $set($value, $data);
+        } elseif (method_exists($this, $method)) {
+            $value = $this->$method($value, $data);
+        } else {
+            // 类型转换
+            $value = $this->writeTransform($value, $this->getFields($name));
+        }
+        return $value;
+    }
+
+    /**
+     * 获取数据对象的值（使用获取器）
+     *
+     * @param string $name 名称
+     * @param bool   $attr 是否使用获取器
+     *
+     * @return mixed
+     */
+    public function get(string $name, bool $attr = true)
     {
         if (isset(self::$weakMap[$this]['mapping'][$name])) {
             // 检查字段映射
@@ -1147,37 +1195,41 @@ abstract class Entity implements JsonSerializable, ArrayAccess, Arrayable, Jsona
         }
 
         $name = $this->getRealFieldName($name);
-        if (isset(self::$weakMap[$this]['get'][$name])) {
+        if ($attr && isset(self::$weakMap[$this]['get'][$name])) {
             // 已经输出的数据直接返回
             return self::$weakMap[$this]['get'][$name];
         }
 
-        // 通过获取器输出
-        $value = $this->getWithAttr($name, $this->getValue($name));
+        $value = $this->getValue($name);
+        if ($attr) {
+            // 通过获取器输出
+            $value = $this->getWithAttr($name, $value, $this->getData());
+        }
 
         $this->setWeakData('get', $name, $value);
         return $value;
     }
 
     /**
-     * 处理数据对象的值
+     * 处理数据对象的值（经过获取器和类型转换）
      *
      * @param string $name 名称
      * @param mixed  $value 值
+     * @param array  $data 所有数据
      *
      * @return mixed
      */
-    private function getWithAttr(string $name, $value)
+    private function getWithAttr(string $name, $value, array $data = [])
     {
         $attr   = Str::studly($name);
         $method = 'get' . $attr . 'Attr';
         if (isset(self::$weakMap[$this]['with_attr'][$name])) {
             $callback = self::$weakMap[$this]['with_attr'][$name];
-            $value    = $callback($value, $this->getData(), $this);
+            $value    = $callback($value, $data, $this);
         } elseif (method_exists($this, $attr) && $get = $this->$attr()['get'] ?? '') {
-            $value = $get($value, $this->getData());
+            $value = $get($value, $data);
         } elseif (method_exists($this, $method)) {
-            $value = $this->$method($value, $this->getData());
+            $value = $this->$method($value, $data);
         } elseif ($value instanceof Typeable || is_subclass_of($value, EnumTransform::class)) {
             $value = $value->value();
         } elseif (is_null($value)) {
