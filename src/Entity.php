@@ -129,14 +129,9 @@ abstract class Entity implements JsonSerializable, ArrayAccess, Arrayable, Jsona
                 // 简单模型
                 $model = $this->getSimpleModel();
             } else {
-                // 绑定模型
+                // 检测绑定模型 不存在则自动设置为简单模型
                 $class = $this->parseModel();
-                if (class_exists($class)) {
-                    $model = new $class;
-                } else {
-                    // 模型不存在 自动设置为简单模型
-                    $model = $this->getSimpleModel();
-                }
+                $model = class_exists($class) ? new $class : $this->getSimpleModel();
             }
         }
 
@@ -160,7 +155,9 @@ abstract class Entity implements JsonSerializable, ArrayAccess, Arrayable, Jsona
     }
 
     /**
-     * 获取数据表字段列表.
+     * 获取数据表字段类型列表（或某个字段的类型）.
+     *
+     * @param string|null $field 字段名
      *
      * @return array|string
      */
@@ -462,7 +459,6 @@ abstract class Entity implements JsonSerializable, ArrayAccess, Arrayable, Jsona
                     $value = new $type($value);
                 }
             }
-
             return $value;
         };
 
@@ -517,7 +513,6 @@ abstract class Entity implements JsonSerializable, ArrayAccess, Arrayable, Jsona
                     $value = $value->__toString();
                 }
             }
-
             return $value;
         };
 
@@ -1023,9 +1018,9 @@ abstract class Entity implements JsonSerializable, ArrayAccess, Arrayable, Jsona
     /**
      * 获取模型数据.
      *
-     * @return mixed
+     * @return array
      */
-    public function getData()
+    public function getData(): array
     {
         return array_merge(get_object_vars($this), self::$weakMap[$this]['data']);
     }
