@@ -63,7 +63,7 @@ abstract class Entity implements JsonSerializable, ArrayAccess, Arrayable, Jsona
         }
 
         self::$weakMap[$this] = [
-            'model'         => null,
+            'model'         => $this->initModel($model, $options),
             'get'           => [],
             'data'          => [],
             'schema'        => [],
@@ -74,7 +74,6 @@ abstract class Entity implements JsonSerializable, ArrayAccess, Arrayable, Jsona
             'with_attr'     => [],
             'update_time'   => $options['update_time'] ?? 'update_time',
             'create_time'   => $options['create_time'] ?? 'create_time',
-            'model_class'   => $options['model_class'] ?? '',
             'table_name'    => $options['table_name'] ?? '',
             'pk'            => $options['pk'] ?? 'id',
             'validate'      => $options['validate'] ?? $this->parseValidate(),
@@ -91,8 +90,6 @@ abstract class Entity implements JsonSerializable, ArrayAccess, Arrayable, Jsona
             'relation_keys' => $options['relation_keys'] ?? [],
         ];
 
-        // 设置模型
-        $this->initModel($model);
         // 初始化模型数据
         $this->initializeData($data);
     }
@@ -115,10 +112,11 @@ abstract class Entity implements JsonSerializable, ArrayAccess, Arrayable, Jsona
     /**
      * 初始化模型.
      * @param Model $model 模型对象
+     * @param array $option 模型参数
      *
-     * @return void
+     * @return Model|Query
      */
-    protected function initModel(?Model $model = null)
+    protected function initModel(?Model $model = null, array $option = [])
     {
         // 获取对应模型对象
         if (is_null($model)) {
@@ -130,7 +128,7 @@ abstract class Entity implements JsonSerializable, ArrayAccess, Arrayable, Jsona
                 $model = $this->getSimpleModel();
             } else {
                 // 检测绑定模型 不存在则自动设置为简单模型
-                $class = $this->parseModel();
+                $class = $option['model_class'] ?? str_replace('\\entity', '\\model', static::class);
                 $model = class_exists($class) ? new $class : $this->getSimpleModel();
             }
         }
@@ -141,7 +139,7 @@ abstract class Entity implements JsonSerializable, ArrayAccess, Arrayable, Jsona
             $model->model($this);
         }
 
-        self::$weakMap[$this]['model'] = $model;
+        return $model;
     }
 
     /**
@@ -224,16 +222,6 @@ abstract class Entity implements JsonSerializable, ArrayAccess, Arrayable, Jsona
     protected function getOptions(): array
     {
         return [];
-    }
-
-    /**
-     * 解析模型实例名称.
-     *
-     * @return string
-     */
-    protected function parseModel(): string
-    {
-        return self::$weakMap[$this]['model_class'] ?: str_replace('\\entity', '\\model', static::class);
     }
 
     /**
@@ -323,7 +311,7 @@ abstract class Entity implements JsonSerializable, ArrayAccess, Arrayable, Jsona
     }
 
     /**
-     * 设置关联数据.
+     * 设置关联JOIN数据.
      *
      * @param array $relations 关联数据
      *
