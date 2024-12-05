@@ -389,11 +389,14 @@ abstract class Model implements JsonSerializable, ArrayAccess, Arrayable, Jsonab
      *
      * @param mixed $where 更新条件
      *
-     * @return void
+     * @return $this
      */
-    public function setUpdateWhere($where): void
+    public function setUpdateWhere($where)
     {
-        $this->updateWhere = $where;
+        if (!empty($where)) {
+            $this->updateWhere = $where;
+        }
+        return $this;
     }
 
     /**

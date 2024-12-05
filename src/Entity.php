@@ -104,9 +104,14 @@ abstract class Entity implements JsonSerializable, ArrayAccess, Arrayable, Jsona
         return self::$weakMap[$this]['table_name'] ?? '';
     }
 
-    protected function getPk(): string
+    public function getPk()
     {
-        return self::$weakMap[$this]['pk'] ?? '';
+        if ($this->model() instanceof Model) {
+            $pk = $this->model()->getPk();
+        } else {
+            $pk = self::$weakMap[$this]['pk'] ?? '';
+        }
+        return $pk;
     }
 
     /**
@@ -285,7 +290,7 @@ abstract class Entity implements JsonSerializable, ArrayAccess, Arrayable, Jsona
             }
 
             $trueName = $this->getRealFieldName($name);
-            if (!$this->isView() && $this->model()->getPk() == $trueName) {
+            if (!$this->isView() && $this->getPk() == $trueName) {
                 // 记录主键值
                 $this->model()->setKey($val);
             }
@@ -689,9 +694,10 @@ abstract class Entity implements JsonSerializable, ArrayAccess, Arrayable, Jsona
      * 保存模型实例数据.
      *
      * @param array|object $data 数据
+     * @param mixed $where 更新条件
      * @return bool
      */
-    public function save(array | object $data = []): bool
+    public function save(array | object $data = [], $where = []): bool
     {
         if (!empty($data)) {
             // 初始化模型数据
@@ -713,10 +719,12 @@ abstract class Entity implements JsonSerializable, ArrayAccess, Arrayable, Jsona
         // 验证数据
         $this->validate($data, $allow);
 
-        if ($model instanceof Model) {
-            $isUpdate = $model->getKey() && !$model->isForce();
+        if (!empty($where)) {
+            $isUpdate = true;
+        } elseif ($model instanceof Model) {
+            $isUpdate = $this->getKey() && !$model->isForce();
         } else {
-            $isUpdate = $model->getKey() ? true : false;
+            $isUpdate = $this->getKey() ? true : false;
         }
 
         foreach ($data as $name => &$val) {
@@ -742,9 +750,12 @@ abstract class Entity implements JsonSerializable, ArrayAccess, Arrayable, Jsona
         $this->autoDateTime($data, $isUpdate);
 
         if ($model instanceof Model) {
-            $result = $model->allowField($allow)->save($data);
+            $result = $model->allowField($allow)->setUpdateWhere($where)->save($data);
         } else {
-            $result = $model->field($allow)->save($data);
+            $result = $model->field($allow)->where($where)->save($data);
+            if (!$isUpdate) {
+                $this->setKey($model->getLastInsID());
+            }
         }
 
         if (false === $result) {
@@ -817,7 +828,7 @@ abstract class Entity implements JsonSerializable, ArrayAccess, Arrayable, Jsona
      */
     protected function isNotRequireUpdate(string $name, $val, array $origin): bool
     {
-        return (array_key_exists($name, $origin) && $val === $origin[$name]) || $this->model()->getPk() == $name;
+        return (array_key_exists($name, $origin) && $val === $origin[$name]) || $this->getPk() == $name;
     }
 
     /**
@@ -913,7 +924,7 @@ abstract class Entity implements JsonSerializable, ArrayAccess, Arrayable, Jsona
             }
         }
 
-        $result = $this->model()->delete();
+        $result = $this->model()->setKey($this->getKey())->delete();
 
         if ($result && !empty($relations)) {
             // 删除关联数据
@@ -935,12 +946,7 @@ abstract class Entity implements JsonSerializable, ArrayAccess, Arrayable, Jsona
     {
         $model = new static();
 
-        if (!empty($allowField)) {
-            $model->allowField($allowField);
-        }
-
-        $model->replace($replace);
-        $model->save($data);
+        $model->allowField($allowField)->replace($replace)->save($data);
 
         return $model;
     }
@@ -957,16 +963,7 @@ abstract class Entity implements JsonSerializable, ArrayAccess, Arrayable, Jsona
     {
         $model = new static();
 
-        if (!empty($allowField)) {
-            $model->allowField($allowField);
-        }
-
-        if (!empty($where)) {
-            $model->setUpdateWhere($where);
-        }
-
-        $model->exists(true);
-        $model->save($data);
+        $model->allowField($allowField)->save($data, $where);
 
         return $model;
     }
@@ -997,10 +994,23 @@ abstract class Entity implements JsonSerializable, ArrayAccess, Arrayable, Jsona
      */
     public function setKey($value)
     {
-        $pk = $this->model()->getPk();
+        $pk = $this->getPk();
+
         if (is_string($pk)) {
-            $this->$pk = $value;
+            $this->set($pk, $value);
         }
+    }
+
+    /**
+     * 获取主键值
+     *
+     * @return mixed
+     */
+    public function getKey()
+    {
+        $pk = $this->getPk();
+
+        return is_string($pk) ? $this->get($pk) : null;
     }
 
     /**

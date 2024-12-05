@@ -20,6 +20,7 @@ use think\db\exception\DataNotFoundException;
 use think\db\exception\DbException as Exception;
 use think\db\exception\ModelNotFoundException;
 use think\helper\Str;
+use think\Model;
 use think\Paginator;
 
 /**
@@ -1395,8 +1396,12 @@ abstract class BaseQuery
             $this->parsePkWhere($data);
         }
 
-        if (empty($this->options['where']) && $this->model) {
-            $this->where($this->model->getWhere());
+        if (empty($this->options['where'])) {
+            if ($this->model && $this->model instanceof Model) {
+                $this->where($this->model->getWhere());
+            } elseif (!empty($this->options['key'])) {
+                $this->where($this->pk, '=', $this->options['key']);
+            }
         }
 
         if (true !== $data && empty($this->options['where']) && empty($this->options['scope'])) {
