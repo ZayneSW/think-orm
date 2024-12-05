@@ -72,6 +72,7 @@ abstract class Entity implements JsonSerializable, ArrayAccess, Arrayable, Jsona
             'together'      => [],
             'allow'         => [],
             'with_attr'     => [],
+            'force'         => false,
             'update_time'   => $options['update_time'] ?? 'update_time',
             'create_time'   => $options['create_time'] ?? 'create_time',
             'table_name'    => $options['table_name'] ?? '',
@@ -561,7 +562,11 @@ abstract class Entity implements JsonSerializable, ArrayAccess, Arrayable, Jsona
      */
     public function force(bool $force = true)
     {
-        $this->model()->force($force);
+        if ($this->model() instanceof Model) {
+            $this->model()->force($force);
+        } else {
+            self::$weakMap[$this]['force'] = $force;
+        }
 
         return $this;
     }
@@ -714,15 +719,12 @@ abstract class Entity implements JsonSerializable, ArrayAccess, Arrayable, Jsona
         $readonly = $this->getWeakData('readonly');
         $disuse   = $this->getWeakData('disuse');
         $allow    = array_diff($allow, $readonly, $disuse);
-        $model    = $this->model();
 
         // 验证数据
         $this->validate($data, $allow);
 
         if (!empty($where)) {
             $isUpdate = true;
-        } elseif ($model instanceof Model) {
-            $isUpdate = $this->getKey() && !$model->isForce();
         } else {
             $isUpdate = $this->getKey() ? true : false;
         }
@@ -734,7 +736,7 @@ abstract class Entity implements JsonSerializable, ArrayAccess, Arrayable, Jsona
             } elseif ($val instanceof Collection || !in_array($name, $allow)) {
                 // 禁止更新字段（包括只读、废弃和数据集）
                 unset($data[$name]);
-            } elseif ($isUpdate && $this->isNotRequireUpdate($name, $val, $origin)) {
+            } elseif ($isUpdate && !$this->isForce() && $this->isNotRequireUpdate($name, $val, $origin)) {
                 // 无需更新字段
                 unset($data[$name]);
             } else {
@@ -749,6 +751,7 @@ abstract class Entity implements JsonSerializable, ArrayAccess, Arrayable, Jsona
         // 自动时间戳处理
         $this->autoDateTime($data, $isUpdate);
 
+        $model = $this->model();
         if ($model instanceof Model) {
             $result = $model->allowField($allow)->setUpdateWhere($where)->save($data);
         } else {
@@ -843,7 +846,7 @@ abstract class Entity implements JsonSerializable, ArrayAccess, Arrayable, Jsona
             if ($relation && in_array($name, $this->getWeakData('together'))) {
                 $relationKey = $this->getRelationKey($name);
                 if ($relationKey) {
-                    $relation->$relationKey = $this->model()->getKey();
+                    $relation->$relationKey = $this->getKey();
                 }
                 $relation->save();
             }
@@ -1116,6 +1119,19 @@ abstract class Entity implements JsonSerializable, ArrayAccess, Arrayable, Jsona
     public function isEmpty(): bool
     {
         return empty($this->getData());
+    }
+
+    /**
+     * 判断数据是否为空.
+     *
+     * @return bool
+     */
+    public function isForce(): bool
+    {
+        if ($this->model() instanceof Model) {
+            return $this->model()->isForce();
+        }
+        return self::$weakMap[$this]['force'] ?? false;
     }
 
     /**
