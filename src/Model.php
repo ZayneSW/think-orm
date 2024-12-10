@@ -356,8 +356,9 @@ abstract class Model implements JsonSerializable, ArrayAccess, Arrayable, Jsonab
         if (!$this->entity) {
             $model->exists(true);
             $model->setUpdateWhere($where);
-            $model->trigger('AfterRead');
         }
+
+        $this->trigger('AfterRead');
 
         return $model;
     }
