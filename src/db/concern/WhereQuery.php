@@ -636,18 +636,18 @@ trait WhereQuery
 
         // 根据条件决定执行哪个查询
         if ($condition) {
-            $this->executeQuery($query);
+            $this->executeQuery($query, $condition);
         } elseif ($otherwise) {
-            $this->executeQuery($otherwise);
+            $this->executeQuery($otherwise, $condition);
         }
 
         return $this;
     }
 
-    protected function executeQuery(Closure | array $query): void
+    protected function executeQuery(Closure | array $query, $condition): void
     {
         if ($query instanceof Closure) {
-            $query($this);
+            $query($this, $condition);
         } elseif (is_array($query)) {
             $this->where($query);
         }
