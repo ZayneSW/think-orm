@@ -24,6 +24,7 @@ use think\contract\Arrayable;
 use think\contract\Jsonable;
 use think\db\BaseQuery as Query;
 use think\db\exception\DbException as Exception;
+use think\db\exception\ModelEventException;
 use think\db\Raw;
 use think\exception\ValidateException;
 use think\facade\Db;
@@ -155,7 +156,7 @@ abstract class Entity implements JsonSerializable, ArrayAccess, Arrayable, Jsona
     protected function getSimpleModel()
     {
         return Db::newQuery()->name($this->getTableName() ?: Str::snake(class_basename(static::class)))
-            ->pk($this->getPk());
+            ->pk(self::$weakMap[$this]['pk'] ?? '');
     }
 
     /**
@@ -312,6 +313,7 @@ abstract class Entity implements JsonSerializable, ArrayAccess, Arrayable, Jsona
         }
 
         if (!empty($origin) && !$fromSave) {
+            $this->trigger('AfterRead');
             $this->setWeak('origin', $origin);
         }
     }
@@ -729,6 +731,10 @@ abstract class Entity implements JsonSerializable, ArrayAccess, Arrayable, Jsona
             $isUpdate = $this->getKey() ? true : false;
         }
 
+        if (false === $this->trigger($isUpdate ? 'BeforeUpdate' : 'BeforeInsert')) {
+            return false;
+        }
+
         foreach ($data as $name => &$val) {
             if ($val instanceof Entity || is_subclass_of($this->getFields($name), Entity::class)) {
                 $relations[$name] = $val;
@@ -744,7 +750,7 @@ abstract class Entity implements JsonSerializable, ArrayAccess, Arrayable, Jsona
             }
         }
 
-        if (empty($data)) {
+        if (empty($data) || false === $this->trigger('BeforeWrite')) {
             return false;
         }
 
@@ -754,16 +760,18 @@ abstract class Entity implements JsonSerializable, ArrayAccess, Arrayable, Jsona
         $model = $this->model();
         if ($model instanceof Model) {
             $result = $model->allowField($allow)->setUpdateWhere($where)->save($data);
+            if (false === $result) {
+                return false;
+            }
         } else {
             $result = $model->field($allow)->where($where)->save($data);
             if (!$isUpdate) {
                 $this->setKey($model->getLastInsID());
             }
+            $this->trigger($isUpdate ? 'AfterUpdate' : 'AfterInsert');
         }
 
-        if (false === $result) {
-            return false;
-        }
+        $this->trigger('AfterWrite');
 
         // 保存关联数据
         if (!empty($relations)) {
@@ -921,6 +929,10 @@ abstract class Entity implements JsonSerializable, ArrayAccess, Arrayable, Jsona
             return true;
         }
 
+        if ($this->isEmpty() || false === $this->trigger('BeforeDelete')) {
+            return false;
+        }
+
         foreach ($this->getData() as $name => $val) {
             if ($val instanceof Entity || $val instanceof Collection) {
                 $relations[$name] = $val;
@@ -928,6 +940,8 @@ abstract class Entity implements JsonSerializable, ArrayAccess, Arrayable, Jsona
         }
 
         $result = $this->model()->setKey($this->getKey())->delete();
+
+        $this->trigger('AfterDelete');
 
         if ($result && !empty($relations)) {
             // 删除关联数据
@@ -986,7 +1000,25 @@ abstract class Entity implements JsonSerializable, ArrayAccess, Arrayable, Jsona
             return true;
         }
 
-        return $entity->model()->destroy($data, $force);
+        $model = $entity->model();
+        if ($model instanceof Model) {
+            return $model->destroy($data, $force);
+        }
+
+        if (is_array($data) && key($data) !== 0) {
+            $model->where($data);
+            $data = [];
+        } elseif ($data instanceof \Closure) {
+            $data($model);
+            $data = [];
+        }
+
+        $resultSet = $model->select((array) $data);
+
+        foreach ($resultSet as $result) {
+            $result->force($force)->delete();
+        }
+        return true;
     }
 
     /**
@@ -1012,7 +1044,6 @@ abstract class Entity implements JsonSerializable, ArrayAccess, Arrayable, Jsona
     public function getKey()
     {
         $pk = $this->getPk();
-
         return is_string($pk) ? $this->get($pk) : null;
     }
 
@@ -1263,6 +1294,34 @@ abstract class Entity implements JsonSerializable, ArrayAccess, Arrayable, Jsona
             if ($modelRelation instanceof Relation) {
                 return $modelRelation->getRelation();
             }
+        }
+    }
+
+    /**
+     * 触发事件.
+     *
+     * @param string $event 事件名
+     *
+     * @return bool
+     */
+    protected function trigger(string $event): bool
+    {
+        if ($this->model() instanceof Model) {
+            return true;
+        }
+
+        $call = 'on' . Str::studly($event);
+
+        try {
+            if (method_exists($this, $call)) {
+                $result = $this->$call($this);
+            } else {
+                $result = true;
+            }
+
+            return !(false === $result);
+        } catch (ModelEventException $e) {
+            return false;
         }
     }
 
