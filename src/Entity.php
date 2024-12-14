@@ -394,13 +394,26 @@ abstract class Entity implements JsonSerializable, ArrayAccess, Arrayable, Jsona
     public function withFieldAttr(array $attr)
     {
         foreach ($attr as $name => $closure) {
-            $name = $this->getRealFieldName($name);
-
-            self::$weakMap[$this]['with_attr'][$name] = $closure;
+            $this->withAttr($name, $closure);
         }
 
-        $this->append(array_keys($attr), true);
+        return $this;
+    }
 
+    /**
+     * 设置数据字段获取器.
+     *
+     * @param string    $name     字段名
+     * @param callable  $callback 闭包获取器
+     *
+     * @return $this
+     */
+    public function withAttr(string $name,  callable $callback)
+    {
+        $name = $this->getRealFieldName($name);
+
+        self::$weakMap[$this]['with_attr'][$name] = $callback;
+        self::$weakMap[$this]['append'][] = $name;
         return $this;
     }
 

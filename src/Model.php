@@ -1276,6 +1276,10 @@ abstract class Model implements JsonSerializable, ArrayAccess, Arrayable, Jsonab
             return call_user_func_array(static::$macro[static::class][$method]->bindTo($this, static::class), $args);
         }
 
+        if ($this->exists && strtolower($method) == 'withattr') {
+            return call_user_func_array([$this, 'withFieldAttr'], $args);
+        }
+
         return call_user_func_array([$this->db(), $method], $args);
     }
 
