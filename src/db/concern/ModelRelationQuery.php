@@ -718,11 +718,15 @@ trait ModelRelationQuery
             $result->refreshOrigin();
         }
 
-        foreach (['hidden', 'visible', 'append', 'mapping'] as $name) {
-            if (isset($this->options[$name])) {
+        foreach (['hidden', 'visible', 'append'] as $name) {
+            if (!empty($this->options[$name])) {
                 [$value, $merge] = $this->options[$name];
                 $result->$name($value, $merge);
             }
+        }
+
+        if (!empty($this->options['mapping'])) {
+            $result->mapping($this->options['mapping']);
         }
     }
 }
