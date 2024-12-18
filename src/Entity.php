@@ -401,7 +401,7 @@ abstract class Entity implements JsonSerializable, ArrayAccess, Arrayable, Jsona
     }
 
     /**
-     * 设置数据字段获取器.
+     * 动态设置字段获取器.
      *
      * @param string    $name     字段名
      * @param callable  $callback 闭包获取器
@@ -1123,36 +1123,35 @@ abstract class Entity implements JsonSerializable, ArrayAccess, Arrayable, Jsona
             $allow = array_diff($visible ?: array_keys($data), $hidden);
         }
 
-        foreach ($data as $name => &$item) {
-            if ($item instanceof Entity || $item instanceof Collection) {
+        $item = [];
+        foreach ($data as $name => $val) {
+            if ($val instanceof Entity || $val instanceof Collection) {
                 if (!empty($relation[$name])) {
                     // 处理关联数据输出
                     foreach ($relation[$name] as $key => $val) {
-                        $item->$key($val);
+                        $val->$key($val);
                     }
                 }
-                $item = $item->toarray();
-            } elseif (!empty($allow) && !in_array($name, $allow)) {
-                unset($data[$name]);
-            } else {
+                $item[$name] = $val->toarray();
+            } elseif (empty($allow) || in_array($name, $allow)) {
                 // 通过获取器输出
-                $item = $this->getWithAttr($name, $item, $data);
+                $item[$name] = $this->getWithAttr($name, $val, $data);
             }
 
-            if (isset(self::$weakMap[$this]['mapping'][$name])) {
+            if (isset($item[$name]) && isset(self::$weakMap[$this]['mapping'][$name])) {
                 // 检查字段映射
                 $key        = self::$weakMap[$this]['mapping'][$name];
-                $data[$key] = $data[$name];
-                unset($data[$name]);
+                $item[$key] = $item[$name];
+                unset($item[$name]);
             }
         }
 
         // 输出额外属性 必须定义获取器
         foreach (self::$weakMap[$this]['append'] as $key) {
-            $data[$key] = $this->get($key);
+            $item[$key] = $this->get($key);
         }
 
-        return $data;
+        return $item;
     }
 
     /**
