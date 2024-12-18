@@ -217,10 +217,10 @@ trait Attribute
     public function setKey($value)
     {
         $pk = $this->getPk();
-        if (is_string($pk)) {
-            $this->key    = $value;
-            $this->exists = true;
-        }
+
+        $this->key    = $value;
+        $this->exists = true;
+
         return $this;
     }
 
@@ -239,8 +239,16 @@ trait Attribute
 
         if (is_string($pk) && array_key_exists($pk, $this->data)) {
             $this->key = $this->data[$pk];
-            return $this->data[$pk];
+        } elseif (is_array($pk)) {
+            $data = [];
+            foreach ($pk as $name) {
+                if (array_key_exists($name, $this->data)) {
+                    $data[$name] = $this->data[$name];
+                }
+            }
+            $this->key = $data;
         }
+        return $this->key ?? null;
     }
 
     /**

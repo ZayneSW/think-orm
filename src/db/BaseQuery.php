@@ -1400,7 +1400,11 @@ abstract class BaseQuery
             if ($this->model && $this->model instanceof Model) {
                 $this->where($this->model->getWhere());
             } elseif (!empty($this->options['key'])) {
-                $this->where($this->pk, '=', $this->options['key']);
+                if (is_array($this->pk)) {
+                    $this->where($this->options['key']);
+                } else {
+                    $this->where($this->pk, '=', $this->options['key']);
+                }
             }
         }
 
@@ -1580,7 +1584,11 @@ abstract class BaseQuery
         $isUpdate = false;
         // 如果存在主键数据 则自动作为更新条件
         if (!empty($this->options['key'])) {
-            $this->where($pk, '=', $this->options['key']);
+            if (is_array($pk)) {
+                $this->where($this->options['key']);
+            } else {
+                $this->where($pk, '=', $this->options['key']);
+            }
             $isUpdate = true;
         } elseif (is_string($pk) && isset($data[$pk])) {
             $this->where($pk, '=', $data[$pk]);

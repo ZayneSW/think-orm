@@ -1055,7 +1055,14 @@ abstract class Entity implements JsonSerializable, ArrayAccess, Arrayable, Jsona
     public function getKey()
     {
         $pk = $this->getPk();
-        return is_string($pk) ? $this->get($pk) : null;
+        if (is_string($pk)) {
+            return $this->get($pk);
+        }
+        
+        foreach ($pk as $name) {
+            $data[$name] = $this->get($name);
+        }
+        return $data;
     }
 
     /**
