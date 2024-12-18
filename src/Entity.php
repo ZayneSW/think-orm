@@ -1505,7 +1505,7 @@ abstract class Entity implements JsonSerializable, ArrayAccess, Arrayable, Jsona
 
     public function offsetExists(mixed $name): bool
     {
-        return __isset($name);
+        return $this->__isset($name);
     }
 
     public function offsetUnset(mixed $name): void
