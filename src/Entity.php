@@ -155,7 +155,8 @@ abstract class Entity implements JsonSerializable, ArrayAccess, Arrayable, Jsona
      */
     protected function getSimpleModel()
     {
-        return Db::newQuery()->name($this->getTableName() ?: Str::snake(class_basename(static::class)))
+        return Db::newQuery()
+            ->name($this->getTableName() ?: Str::snake(class_basename(static::class)))
             ->pk(self::$weakMap[$this]['pk'] ?? '');
     }
 
@@ -172,7 +173,7 @@ abstract class Entity implements JsonSerializable, ArrayAccess, Arrayable, Jsona
             $schema = self::$_schema[static::class];
         } else {
             $class     = new ReflectionClass($this);
-            $propertys = $class->getProperties(ReflectionProperty::IS_PUBLIC | ReflectionProperty::IS_PROTECTED);
+            $propertys = $class->getProperties(ReflectionProperty::IS_PROTECTED);
             $schema    = [];
 
             foreach ($propertys as $property) {
@@ -277,10 +278,7 @@ abstract class Entity implements JsonSerializable, ArrayAccess, Arrayable, Jsona
 
             if (!empty(self::$weakMap[$this]['mapping'])) {
                 // 字段映射
-                $key = array_search($name, self::$weakMap[$this]['mapping']);
-                if (is_string($key)) {
-                    $name = $key;
-                }
+                $name = array_search($name, self::$weakMap[$this]['mapping'])?:$name;
             }
 
             if (str_contains($name, '__')) {
@@ -456,7 +454,7 @@ abstract class Entity implements JsonSerializable, ArrayAccess, Arrayable, Jsona
         }
 
         $typeTransform = static function (string $type, $value, $model) {
-            if (str_contains($type, '\\') && class_exists($type)) {
+            if (class_exists($type) && !($value instanceof $type)) {
                 if (is_subclass_of($type, Typeable::class)) {
                     $value = $type::from($value, $model);
                 } elseif (is_subclass_of($type, FieldTypeTransform::class)) {
@@ -511,7 +509,7 @@ abstract class Entity implements JsonSerializable, ArrayAccess, Arrayable, Jsona
         }
 
         $typeTransform = static function (string $type, $value, $model) {
-            if (str_contains($type, '\\') && class_exists($type)) {
+            if (class_exists($type)) {
                 if (is_subclass_of($type, Typeable::class)) {
                     $value = $value->value();
                 } elseif (is_subclass_of($type, FieldTypeTransform::class)) {
@@ -1191,7 +1189,8 @@ abstract class Entity implements JsonSerializable, ArrayAccess, Arrayable, Jsona
             $name = array_search($name, self::$weakMap[$this]['mapping']) ?: $name;
         }
 
-        $name = $this->getRealFieldName($name);
+        $name  = $this->getRealFieldName($name);
+        $value = $this->readTransform($value, $this->getFields($name));
         if (property_exists($this, $name)) {
             $this->$name = $value;
         } else {
