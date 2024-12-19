@@ -1674,7 +1674,7 @@ abstract class BaseQuery
                 foreach ($data['where'][$logic] as $key => $val) {
                     if ($val instanceof Closure) {
                         $reflection = new ReflectionFunction($val);
-                        $properties = $reflection->getClosureUsedVariables();
+                        $properties = $reflection->getStaticVariables();
                         if (empty($properties)) {
                             $name = $reflection->getName() . $reflection->getStartLine() . '-' . $reflection->getEndLine();
                         } else {
