@@ -279,7 +279,7 @@ abstract class Entity implements JsonSerializable, ArrayAccess, Arrayable, Jsona
                 $this->model()->setKey($val);
             }
 
-            if ($this->isView() || in_array($trueName, $fields)) {
+            if ($this->isView() || $this->isVirtual() || in_array($trueName, $fields)) {
                 // 读取数据后进行类型转换
                 $value = $this->readTransform($val, $schema[$trueName] ?? 'string');
                 // 数据赋值
@@ -1266,13 +1266,13 @@ abstract class Entity implements JsonSerializable, ArrayAccess, Arrayable, Jsona
     }
 
     /**
-     * 获取数据对象的值
+     * 获取数据对象的实际值
      *
      * @param string $name 名称
      *
      * @return mixed
      */
-    private function getValue(string $name)
+    public function getValue(string $name)
     {
         if (!array_key_exists($name, self::$weakMap[$this]['data'])) {
             // 动态获取关联数据
