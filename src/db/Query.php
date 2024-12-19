@@ -22,9 +22,9 @@ use think\db\exception\DbException as Exception;
 class Query extends BaseQuery
 {
     use concern\JoinAndViewQuery;
-    use concern\ParamsBind;
     use concern\TableFieldInfo;
-
+    use concern\Transaction;
+    
     /**
      * 表达式方式指定Field排序.
      *
@@ -506,23 +506,6 @@ class Query extends BaseQuery
     protected function getLazyFieldCacheKey(string $field, $id = null): string
     {
         return 'lazy_' . $this->getTable() . '_' . $field . '_' . ($id ?: $this->getKey());
-    }
-
-    /**
-     * 获取当前的查询标识.
-     *
-     * @param mixed $data 要序列化的数据
-     *
-     * @return string
-     */
-    public function getQueryGuid($data = null): string
-    {
-        if (null === $data) {
-            $data = $this->options;
-            unset($data['scope'], $data['default_model']);
-        }
-
-        return md5($this->getConfig('database') . serialize(var_export($data, true)) . serialize($this->getBind(false)));
     }
 
     /**

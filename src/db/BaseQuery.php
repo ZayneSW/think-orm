@@ -15,6 +15,7 @@ namespace think\db;
 
 use Closure;
 use Psr\SimpleCache\CacheInterface;
+use ReflectionFunction;
 use think\Collection;
 use think\db\exception\DataNotFoundException;
 use think\db\exception\DbException as Exception;
@@ -33,7 +34,6 @@ abstract class BaseQuery
     use concern\ModelRelationQuery;
     use concern\ParamsBind;
     use concern\ResultOperation;
-    use concern\Transaction;
     use concern\WhereQuery;
 
     /**
@@ -1657,5 +1657,36 @@ abstract class BaseQuery
     protected function getModelUpdateCondition(array $options)
     {
         return $options['where']['AND'] ?? null;
+    }
+
+    /**
+     * 获取当前的查询标识.
+     *
+     * @return string
+     */
+    public function getQueryGuid(): string
+    {
+        $table = $this->getConfig('database') . $this->getTable();
+        $data  = $this->options;
+        unset($data['scope'], $data['default_model']);
+        foreach (['AND', 'OR', 'XOR'] as $logic) {
+            if (isset($data['where'][$logic])) {
+                foreach ($data['where'][$logic] as $key => $val) {
+                    if ($val instanceof Closure) {
+                        $reflection = new ReflectionFunction($val);
+                        $properties = $reflection->getClosureUsedVariables();
+                        if (empty($properties)) {
+                            $name = $reflection->getName() . $reflection->getStartLine() . '-' . $reflection->getEndLine();
+                        } else {
+                            $name = var_export($properties, true);
+                        }
+                        $data['Closure'][] = $name;
+                        unset($data['where'][$logic][$key]);
+                    }
+                }
+            }
+        }
+
+        return md5($table . serialize(var_export($data, true)) . serialize($this->getBind(false)));
     }
 }
