@@ -30,7 +30,7 @@ trait WhereQuery
      */
     public function where($field, $op = null, $condition = null)
     {
-        if ($field instanceof $this) {
+        if ($field instanceof self) {
             $this->parseQueryWhere($field);
             return $this;
         } elseif (true === $field || 1 === $field) {

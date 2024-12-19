@@ -64,7 +64,6 @@ abstract class Entity implements JsonSerializable, ArrayAccess, Arrayable, Jsona
         }
 
         self::$weakMap[$this] = [
-            'model'         => $this->initModel($model, $options),
             'get'           => [],
             'data'          => [],
             'schema'        => [],
@@ -92,26 +91,32 @@ abstract class Entity implements JsonSerializable, ArrayAccess, Arrayable, Jsona
             'relation_keys' => $options['relation_keys'] ?? [],
         ];
 
-        // 初始化模型数据
+        // 初始化模型及数据
+        self::$weakMap[$this]['model'] = $this->initModel($model, $options);
         $this->initializeData($data);
     }
 
-    public static function instance($data)
-    {
-        return new static($data);
-    }
-
+    /**
+     * 获取对应表名（仅限简单模型）.
+     *
+     * @return string
+     */
     protected function getTableName(): string
     {
-        return self::$weakMap[$this]['table_name'] ?? '';
+        return self::$weakMap[$this]['table_name'] ?: Str::snake(class_basename(static::class));
     }
 
+    /**
+     * 获取主键名.
+     *
+     * @return string|array
+     */
     public function getPk()
     {
         if ($this->model() instanceof Model) {
             $pk = $this->model()->getPk();
         } else {
-            $pk = self::$weakMap[$this]['pk'] ?? '';
+            $pk = self::$weakMap[$this]['pk'];
         }
         return $pk;
     }
@@ -150,14 +155,13 @@ abstract class Entity implements JsonSerializable, ArrayAccess, Arrayable, Jsona
     }
 
     /**
-     * 设置当前实体为简单模型.
-     * 自动获取对应的数据表 不支持关联
+     * 简单模型自动获取对应的数据表和主键
      */
     protected function getSimpleModel()
     {
         return Db::newQuery()
-            ->name($this->getTableName() ?: Str::snake(class_basename(static::class)))
-            ->pk(self::$weakMap[$this]['pk'] ?? '');
+            ->name($this->getTableName())
+            ->pk(self::$weakMap[$this]['pk']);
     }
 
     /**
@@ -213,8 +217,8 @@ abstract class Entity implements JsonSerializable, ArrayAccess, Arrayable, Jsona
      */
     protected function parseData(array | object $data): array
     {
-        if ($data instanceof Model) {
-            $data = array_merge($data->getData(), $data->getRelation());
+        if ($data instanceof self) {
+            $data = $data->getData();
         } elseif (is_object($data)) {
             $data = get_object_vars($data);
         }

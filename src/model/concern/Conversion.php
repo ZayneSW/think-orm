@@ -125,7 +125,7 @@ trait Conversion
 
         $model = $this->relation[$relation] ?? $this->getRelationData($this->$relation());
 
-        if ($model instanceof Model) {
+        if ($model instanceof self) {
             foreach ($append as $key => $attr) {
                 $key = is_numeric($key) ? $attr : $key;
                 if (isset($this->data[$key])) {
@@ -245,7 +245,7 @@ trait Conversion
         $data = array_merge($this->data, $this->relation);
 
         foreach ($data as $key => $val) {
-            if ($val instanceof Model || $val instanceof ModelCollection) {
+            if ($val instanceof self || $val instanceof ModelCollection) {
                 // 关联模型对象
                 if (isset($visible[$key]) && is_array($visible[$key])) {
                     $val->visible($visible[$key]);

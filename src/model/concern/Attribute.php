@@ -306,7 +306,7 @@ trait Attribute
      */
     public function data(array | object $data, bool $set = false, array $allow = [])
     {
-        if ($data instanceof Model) {
+        if ($data instanceof self) {
             $data = $data->getData();
         } elseif (is_object($data)) {
             $data = get_object_vars($data);
@@ -635,7 +635,7 @@ trait Attribute
                 $value = $this->getJsonValue($fieldName, $value);
             } else {
                 $closure = $this->withAttr[$fieldName];
-                if ($closure instanceof \Closure) {
+                if ($closure instanceof Closure) {
                     $value = $closure($value, $this->data, $this);
                 }
             }
