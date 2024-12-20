@@ -574,7 +574,7 @@ abstract class Model implements JsonSerializable, ArrayAccess, Arrayable, Jsonab
         if ($this->exists) {
             $data = $this->db()->find($this->getKey())->getData();
             if ($this->entity) {
-                $this->entity->setData($data);
+                $this->entity->data($data);
             } else {
                 $this->data   = $data;
                 $this->origin = $this->data;

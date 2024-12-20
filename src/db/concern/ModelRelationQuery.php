@@ -667,7 +667,7 @@ trait ModelRelationQuery
         }
 
         if ($this->model instanceof Entity) {
-            $result = $this->model->setdata($result);
+            $result = $this->model->data($result);
         } else {
             $result = $this->model->newInstance(
                 $result,
