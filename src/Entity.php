@@ -295,12 +295,12 @@ abstract class Entity implements JsonSerializable, ArrayAccess, Arrayable, Jsona
 
         if (!empty($relations)) {
             // 设置关联数据
-            $this->parseRelationData($relations, $schema);
+            $this->parseRelationData($relations);
         }
 
         if (!empty($origin) && !$fromSave) {
             $this->trigger('AfterRead');
-            $this->setWeak('origin', $origin);
+            $this->setWeakMap('origin', $origin);
         }
     }
 
@@ -355,7 +355,7 @@ abstract class Entity implements JsonSerializable, ArrayAccess, Arrayable, Jsona
         return self::$weakMap[$this]['relation'][$relation] ?? [];
     }
 
-    protected function setWeak($name, $value)
+    protected function setWeakMap($name, $value)
     {
         self::$weakMap[$this][$name] = $value;
     }
@@ -535,7 +535,7 @@ abstract class Entity implements JsonSerializable, ArrayAccess, Arrayable, Jsona
      */
     public function together(array $relation)
     {
-        $this->setWeak('together', $relation);
+        $this->setWeakMap('together', $relation);
 
         return $this;
     }
@@ -549,7 +549,7 @@ abstract class Entity implements JsonSerializable, ArrayAccess, Arrayable, Jsona
      */
     public function allowField(array $allow)
     {
-        $this->setWeak('allow', $allow);
+        $this->setWeakMap('allow', $allow);
 
         return $this;
     }
@@ -1063,6 +1063,7 @@ abstract class Entity implements JsonSerializable, ArrayAccess, Arrayable, Jsona
     public function getData(?string $name = null)
     {
         if ($name) {
+            $name = $this->getRealFieldName($name);
             return self::$weakMap[$this]['data'][$name] ?? null;
         }
         return self::$weakMap[$this]['data'];
@@ -1076,7 +1077,7 @@ abstract class Entity implements JsonSerializable, ArrayAccess, Arrayable, Jsona
      *
      * @return void
      */
-    public function setData(string $name, $value)
+    protected function setData(string $name, $value)
     {
         $this->setWeakData('data', $name, $value);
         if (isset(self::$weakMap[$this]['get'][$name])) {
@@ -1107,6 +1108,7 @@ abstract class Entity implements JsonSerializable, ArrayAccess, Arrayable, Jsona
     public function getOrigin(?string $name = null)
     {
         if ($name) {
+            $name = $this->getRealFieldName($name);
             return self::$weakMap[$this]['origin'][$name] ?? null;
         }
         return self::$weakMap[$this]['origin'];
@@ -1467,7 +1469,8 @@ abstract class Entity implements JsonSerializable, ArrayAccess, Arrayable, Jsona
      */
     public function __unset(string $name): void
     {
-        $name                                = $this->getRealFieldName($name);
+        $name = $this->getRealFieldName($name);
+
         self::$weakMap[$this]['data'][$name] = null;
     }
 
