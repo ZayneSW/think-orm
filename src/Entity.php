@@ -778,6 +778,8 @@ abstract class Entity implements JsonSerializable, ArrayAccess, Arrayable, Jsona
             $this->relationSave($relations);
         }
 
+        // 重置原始数据
+        $this->setWeakMap('origin', $data);
         return true;
     }
 
@@ -798,7 +800,7 @@ abstract class Entity implements JsonSerializable, ArrayAccess, Arrayable, Jsona
         foreach ($dateTimeFields as $field) {
             if (is_string($field)) {
                 $data[$field] = $this->getDateTime($field);
-                $this->$field = $this->readTransform($data[$field], $this->getFields($field));
+                $this->setData($field, $this->readTransform($data[$field], $this->getFields($field)));
             }
         }
     }
@@ -926,6 +928,7 @@ abstract class Entity implements JsonSerializable, ArrayAccess, Arrayable, Jsona
     public function delete(): bool
     {
         if ($this->isVirtual() || $this->isView()) {
+            $this->clear();
             return true;
         }
 
@@ -948,6 +951,7 @@ abstract class Entity implements JsonSerializable, ArrayAccess, Arrayable, Jsona
             $this->relationDelete($relations);
         }
 
+        $this->clear();
         return true;
     }
 
@@ -1096,6 +1100,20 @@ abstract class Entity implements JsonSerializable, ArrayAccess, Arrayable, Jsona
     {
         $this->initializeData($data);
         self::$weakMap[$this]['get'] = [];
+        return $this;
+    }
+
+    /**
+     * 清空模型数据.
+     *
+     * @return $this
+     */
+    public function clear()
+    {
+        self::$weakMap[$this]['data']     = [];
+        self::$weakMap[$this]['origin']   = [];
+        self::$weakMap[$this]['get']      = [];
+        self::$weakMap[$this]['relation'] = [];
         return $this;
     }
 
