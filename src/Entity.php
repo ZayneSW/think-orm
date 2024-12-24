@@ -15,6 +15,7 @@ namespace think;
 
 use ArrayAccess;
 use BackedEnum;
+use Closure;
 use InvalidArgumentException;
 use JsonSerializable;
 use Stringable;
@@ -84,6 +85,7 @@ abstract class Entity implements JsonSerializable, ArrayAccess, Arrayable, Jsona
             'mapping'       => $options['mapping'] ?? [],
             'strict'        => $options['strict'] ?? true,
             'bind_attr'     => $options['bind_attr'] ?? [],
+            'auto_insert'   => $options['auto_insert'] ?? [],
             'auto_relation' => $options['auto_relation'] ?? [],
             'relation_keys' => $options['relation_keys'] ?? [],
         ];
@@ -757,6 +759,11 @@ abstract class Entity implements JsonSerializable, ArrayAccess, Arrayable, Jsona
         // 自动时间戳处理
         $this->autoDateTime($data, $isUpdate);
 
+        if (!$isUpdate) {
+            // 自动写入数据
+            $this->autoInsertData($data);
+        }
+
         $model = $this->model();
         if ($model instanceof Model) {
             $result = $model->allowField($allow)->setUpdateWhere($where)->save($data);
@@ -801,6 +808,30 @@ abstract class Entity implements JsonSerializable, ArrayAccess, Arrayable, Jsona
             if (is_string($field)) {
                 $data[$field] = $this->getDateTime($field);
                 $this->setData($field, $this->readTransform($data[$field], $this->getFields($field)));
+            }
+        }
+    }
+
+    /**
+     * 字段自动写入.
+     *
+     * @param array $data 数据
+     * @return void
+     */
+    protected function autoInsertData(array &$data)
+    {
+        if (!empty(self::$weakMap[$this]['auto_insert'])) {
+            foreach (self::$weakMap[$this]['auto_insert'] as $name => $val) {
+                $field = is_string($name) ? $name : $val;
+                if (!isset($data[$field])) {
+                    if ($val instanceof Closure) {
+                        $value = $val($this);
+                    } else {
+                        $value = is_string($name) ? $val : $this->setWithAttr($field, null, $data);
+                    }
+                    $data[$field] = $value;
+                    $this->setData($field, $value);
+                }
             }
         }
     }
