@@ -19,6 +19,7 @@ use PDOStatement;
 use think\db\exception\BindParamException;
 use think\db\exception\DbEventException;
 use think\db\exception\DbException;
+use think\db\exception\DuplicateException;
 use think\db\exception\PDOException;
 use think\model\contract\Modelable as Model;
 
@@ -833,6 +834,9 @@ abstract class PDOConnection extends Connection
             }
 
             if ($e instanceof \PDOException) {
+                if (str_contains($e->getMessage(),'1062 Duplicate entry')) {
+                    throw new DuplicateException($e, $this->config, $this->getLastsql());
+                }
                 throw new PDOException($e, $this->config, $this->getLastsql());
             } else {
                 throw $e;
