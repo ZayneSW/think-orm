@@ -280,7 +280,7 @@ abstract class Entity implements JsonSerializable, ArrayAccess, Arrayable, Jsona
             }
 
             $trueName = $this->getRealFieldName($name);
-            if (!$this->isView() && $this->getPk() == $trueName) {
+            if (!$this->isView() && !$fromSave && $this->getPk() == $trueName) {
                 // 记录主键值
                 $this->model()->setKey($val);
             }
@@ -689,7 +689,7 @@ abstract class Entity implements JsonSerializable, ArrayAccess, Arrayable, Jsona
         if (!empty(self::$weakMap[$this]['validate']) && class_exists('think\validate')) {
             try {
                 validate(self::$weakMap[$this]['validate'])
-                    ->scene($allow)
+                    ->only($allow)
                     ->check($data);
             } catch (ValidateException $e) {
                 // 验证失败 输出错误信息
@@ -726,7 +726,9 @@ abstract class Entity implements JsonSerializable, ArrayAccess, Arrayable, Jsona
         // 验证数据
         $this->validate($data, $allow);
 
-        if (!empty($where)) {
+        if (true === $where) {
+            $isUpdate = false;
+        } elseif (!empty($where)) {
             $isUpdate = true;
         } else {
             $isUpdate = $this->getKey() ? true : false;
@@ -771,7 +773,7 @@ abstract class Entity implements JsonSerializable, ArrayAccess, Arrayable, Jsona
                 return false;
             }
         } else {
-            $result = $model->field($allow)->where($where)->save($data);
+            $result = $model->field($allow)->where($where)->save($data, !$isUpdate);
             if (!$isUpdate) {
                 $this->setKey($model->getLastInsID());
             }
@@ -1043,7 +1045,7 @@ abstract class Entity implements JsonSerializable, ArrayAccess, Arrayable, Jsona
         if (is_array($data) && key($data) !== 0) {
             $model->where($data);
             $data = [];
-        } elseif ($data instanceof \Closure) {
+        } elseif ($data instanceof Closure) {
             $data($model);
             $data = [];
         }
