@@ -1000,7 +1000,7 @@ abstract class Entity implements JsonSerializable, ArrayAccess, Arrayable, Jsona
     {
         $model = new static();
 
-        $model->allowField($allowField)->replace($replace)->save($data);
+        $model->allowField($allowField)->replace($replace)->save($data, true);
 
         return $model;
     }
