@@ -17,6 +17,7 @@ use BackedEnum;
 use Closure;
 use InvalidArgumentException;
 use Stringable;
+use think\db\Express;
 use think\db\Raw;
 use think\helper\Str;
 use think\Model;
@@ -436,7 +437,7 @@ trait Attribute
                 return 1;
             }
 
-            if ($b instanceof Raw) {
+            if ($b instanceof Raw || $b instanceof Express) {
                 return 0;
             }
 
