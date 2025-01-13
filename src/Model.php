@@ -19,6 +19,7 @@ use JsonSerializable;
 use think\contract\Arrayable;
 use think\contract\Jsonable;
 use think\db\BaseQuery as Query;
+use think\db\Express;
 use think\model\contract\Modelable;
 
 /**
@@ -691,15 +692,28 @@ abstract class Model implements JsonSerializable, ArrayAccess, Arrayable, Jsonab
         // 写入回调
         $this->trigger('AfterWrite');
 
-        if (!empty($this->change)) {
-            // 处理递增递减数据
-            foreach ($this->change as $field => $val) {
-                $this->data[$field] = $val;
-            }
-            $this->change = [];
-        }
-
         if (!$this->entity) {
+            if (!empty($this->change)) {
+                // 处理递增递减数据
+                foreach ($this->change as $field => $val) {
+                    $this->data[$field] = $val;
+                }
+                $this->change = [];
+            }
+
+            foreach ($this->data as $name => &$val) {
+                if ($val instanceof Express) {
+                    $step   = $val->getStep();
+                    $origin = $this->origin[$name];
+                    $val    = match ($val->getType()) {
+                        '+'         => $origin + $step,
+                        '-'         => $origin - $step,
+                        '*'         => $origin * $step,
+                        '/'         => $origin / $step,
+                        default     => $origin,
+                    };
+                }
+            }
             // 重新记录原始数据
             $this->origin = $this->data;
             $this->get    = [];
