@@ -30,6 +30,16 @@ class Express
     {
     }
 
+    public function getStep()
+    {
+        return $this->step;
+    }
+
+    public function getType()
+    {
+        return $this->type;
+    }
+
     /**
      * 获取表达式.
      *

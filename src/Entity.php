@@ -662,7 +662,7 @@ abstract class Entity implements JsonSerializable, ArrayAccess, Arrayable, Jsona
      */
     public function inc(string $field, float $step = 1)
     {
-        $this->set($field, new Express('+',$step));
+        $this->set($field, new Express('+', $step));
         return $this;
     }
 
@@ -1299,6 +1299,24 @@ abstract class Entity implements JsonSerializable, ArrayAccess, Arrayable, Jsona
             // 类型转换
             $value = $this->writeTransform($value, $this->getFields($name));
         }
+
+        if ($value instanceof Express) {
+            // 处理运算表达式
+            $step   = $value->getStep();
+            $origin = $this->getOrigin($name);
+            $real   = match ($value->getType()) {
+                '+'         => $origin + $step,
+                '-'         => $origin - $step,
+                '*'         => $origin * $step,
+                '/'         => $origin / $step,
+                default     => $origin,
+            };
+            $this->setData($name, $real);
+        } elseif (is_scalar($value)) {
+            // 同步写入修改器或类型自动转换结果
+            $this->setData($name, $value);
+        }
+
         return $value;
     }
 
