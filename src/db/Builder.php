@@ -84,6 +84,8 @@ class Builder extends BaseBuilder
                 if ($options['strict']) {
                     throw new Exception('fields not exists:[' . $key . ']');
                 }
+            } elseif($val instanceof Express) {
+                $result[$item] = $item . $this->parseExpress($query, $val);
             } elseif (is_array($val) && !empty($val) && is_string($val[0])) {
                 if (in_array(strtoupper($val[0]), ['INC', 'DEC'])) {
                     $result[$item] = match (strtoupper($val[0])) {
@@ -578,6 +580,19 @@ class Builder extends BaseBuilder
         }
 
         return $sql;
+    }
+
+    /**
+     * 分析Express对象
+     *
+     * @param Query $query 查询对象
+     * @param Express  $express  Express对象
+     *
+     * @return string
+     */
+    protected function parseExpress(Query $query, Express $express): string
+    {
+        return $express->getValue();
     }
 
     /**

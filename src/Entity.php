@@ -24,6 +24,7 @@ use think\contract\Jsonable;
 use think\db\BaseQuery as Query;
 use think\db\exception\DbException as Exception;
 use think\db\exception\ModelEventException;
+use think\db\Express;
 use think\db\Raw;
 use think\exception\ValidateException;
 use think\facade\Db;
@@ -437,6 +438,10 @@ abstract class Entity implements JsonSerializable, ArrayAccess, Arrayable, Jsona
             return;
         }
 
+        if ($value instanceof Raw || $value instanceof Express) {
+            return $value;
+        }
+
         if (is_array($type)) {
             [$type, $param] = $type;
         } elseif (str_contains($type, ':')) {
@@ -488,7 +493,7 @@ abstract class Entity implements JsonSerializable, ArrayAccess, Arrayable, Jsona
             return;
         }
 
-        if ($value instanceof Raw) {
+        if ($value instanceof Raw || $value instanceof Express) {
             return $value;
         }
 
@@ -657,7 +662,7 @@ abstract class Entity implements JsonSerializable, ArrayAccess, Arrayable, Jsona
      */
     public function inc(string $field, float $step = 1)
     {
-        $this->set($field, $this->get($field) + $step);
+        $this->set($field, new Express('+',$step));
         return $this;
     }
 
@@ -671,7 +676,7 @@ abstract class Entity implements JsonSerializable, ArrayAccess, Arrayable, Jsona
      */
     public function dec(string $field, float $step = 1)
     {
-        $this->set($field, $this->get($field) - $step);
+        $this->set($field, new Express('-', $step));
         return $this;
     }
 
@@ -788,7 +793,7 @@ abstract class Entity implements JsonSerializable, ArrayAccess, Arrayable, Jsona
         }
 
         // 重置原始数据
-        $this->setWeakMap('origin', $data);
+        $this->setWeakMap('origin', $this->getData());
         return true;
     }
 
