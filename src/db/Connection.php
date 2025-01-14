@@ -320,7 +320,7 @@ abstract class Connection implements ConnectionInterface
     protected function getCacheKey(BaseQuery $query, string $method = ''): string
     {
         if (!empty($query->getOptions('key')) && empty($method)) {
-            $key = 'think_' . $this->getConfig('database') . '.' . $query->getTable() . '|' . var_export($query->getOptions('key'), true);
+            $key = 'think_' . $this->getConfig('database') . '.' . var_export($query->getTable(), true) . '|' . var_export($query->getOptions('key'), true);
         } else {
             $key = $query->getQueryGuid();
         }

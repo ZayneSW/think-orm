@@ -1017,7 +1017,7 @@ abstract class BaseQuery
             $key    = true;
         }
 
-        $this->options['cache'] = [$key, $expire, $tag ?: $this->getTable()];
+        $this->options['cache'] = [$key, $expire, $tag ?: var_export($this->getTable(), true)];
         return $this;
     }
 
@@ -1666,9 +1666,10 @@ abstract class BaseQuery
      */
     public function getQueryGuid(): string
     {
-        $table = $this->getConfig('database') . $this->getTable();
         $data  = $this->options;
         unset($data['scope'], $data['default_model']);
+        $data['database'] = $this->getConfig('database');
+        $data['table']    = $this->getTable();
         foreach (['AND', 'OR', 'XOR'] as $logic) {
             if (isset($data['where'][$logic])) {
                 foreach ($data['where'][$logic] as $key => $val) {
@@ -1687,6 +1688,6 @@ abstract class BaseQuery
             }
         }
 
-        return md5($table . serialize(var_export($data, true)) . serialize($this->getBind(false)));
+        return md5(serialize(var_export($data, true)) . serialize($this->getBind(false)));
     }
 }

@@ -625,12 +625,13 @@ abstract class Model implements JsonSerializable, ArrayAccess, Arrayable, Jsonab
      *
      * @param string $field 字段名
      * @param float  $step  增长值
+     * @param int    $lazyTime 延迟时间（秒）
      *
      * @return $this
      */
-    public function inc(string $field, float $step = 1)
+    public function inc(string $field, float $step = 1, int $lazyTime = 0)
     {
-        $this->setAttr($field, new Express('+', $step));
+        $this->setAttr($field, new Express('+', $step, $lazyTime));
         return $this;
     }
 
@@ -639,12 +640,13 @@ abstract class Model implements JsonSerializable, ArrayAccess, Arrayable, Jsonab
      *
      * @param string $field 字段名
      * @param float  $step  增长值
+     * @param int    $lazyTime 延迟时间（秒） 
      *
      * @return $this
      */
-    public function dec(string $field, float $step = 1)
+    public function dec(string $field, float $step = 1, int $lazyTime = 0)
     {
-        $this->setAttr($field, new Express('-', $step));
+        $this->setAttr($field, new Express('-', $step, $lazyTime));
         return $this;
     }
 
