@@ -3,7 +3,7 @@
 // +----------------------------------------------------------------------
 // | ThinkPHP [ WE CAN DO IT JUST THINK ]
 // +----------------------------------------------------------------------
-// | Copyright (c) 2006~2023 http://thinkphp.cn All rights reserved.
+// | Copyright (c) 2006~2025 http://thinkphp.cn All rights reserved.
 // +----------------------------------------------------------------------
 // | Licensed ( http://www.apache.org/licenses/LICENSE-2.0 )
 // +----------------------------------------------------------------------
@@ -657,12 +657,13 @@ abstract class Entity implements JsonSerializable, ArrayAccess, Arrayable, Jsona
      *
      * @param string $field 字段名
      * @param float  $step  增长值
+     * @param int    $lazyTime 延迟时间（秒）
      *
      * @return $this
      */
-    public function inc(string $field, float $step = 1)
+    public function inc(string $field, float $step = 1, int $lazyTime = 0)
     {
-        return $this->set($field, new Express('+', $step));
+        return $this->set($field, new Express('+', $step, $lazyTime));
     }
 
     /**
@@ -670,12 +671,13 @@ abstract class Entity implements JsonSerializable, ArrayAccess, Arrayable, Jsona
      *
      * @param string $field 字段名
      * @param float  $step  增长值
+     * @param int    $lazyTime 延迟时间（秒）
      *
      * @return $this
      */
-    public function dec(string $field, float $step = 1)
+    public function dec(string $field, float $step = 1, int $lazyTime = 0)
     {
-        return $this->set($field, new Express('-', $step));
+        return $this->set($field, new Express('-', $step, $lazyTime));
     }
 
     /**
