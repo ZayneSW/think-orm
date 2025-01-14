@@ -86,7 +86,7 @@ class Builder extends BaseBuilder
                 }
             } elseif ($val instanceof Express) {
                 if ($val->getLazyTime() && in_array($val->getType(), ['+', '-'])) {
-                    $step = $query->lazyWrite($key, $val->getType() == '+' ? 'inc' : 'dec', $guid, $val->getStep(), $val->getLazyTime());
+                    $step = $query->lazyWrite($key, $val->getType() == '+' ? 'inc' : 'dec', $val->getStep(), $val->getLazyTime());
                     if (false === $step) {
                         continue;
                     }
