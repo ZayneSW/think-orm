@@ -24,7 +24,7 @@ class Query extends BaseQuery
     use concern\JoinAndViewQuery;
     use concern\TableFieldInfo;
     use concern\Transaction;
-    
+
     /**
      * 表达式方式指定Field排序.
      *
@@ -363,12 +363,21 @@ class Query extends BaseQuery
      *
      * @param string $field 字段名
      * @param float  $step  增长值
+     * @param int    $lazyTime 延迟时间（秒）
      *
      * @return $this
      */
-    public function inc(string $field, float $step = 1)
+    public function inc(string $field, float $step = 1, int $lazyTime = 0)
     {
-        $this->options['data'][$field] = ['INC', $step];
+        if ($lazyTime > 0) {
+            $guid = $this->getLazyFieldCacheKey($field);
+            $step = $this->lazyWrite('inc', $guid, $step, $lazyTime);
+            if (false === $step) {
+                return $this;
+            }
+        }
+
+        $this->options['data'][$field] = new Express('+', $step);
 
         return $this;
     }
@@ -378,12 +387,22 @@ class Query extends BaseQuery
      *
      * @param string $field 字段名
      * @param float  $step  增长值
+     * @param int    $lazyTime 延迟时间（秒）
      *
      * @return $this
      */
-    public function dec(string $field, float $step = 1)
+    public function dec(string $field, float $step = 1, int $lazyTime = 0)
     {
-        $this->options['data'][$field] = ['DEC', $step];
+        if ($lazyTime > 0) {
+            $guid = $this->getLazyFieldCacheKey($field);
+            $step = $this->lazyWrite('dec', $guid, $step, $lazyTime);
+            if (false === $step) {
+                return $this;
+            }
+            return $this->inc($field, $step);
+        }
+
+        $this->options['data'][$field] = new Express('-', $step);
 
         return $this;
     }
@@ -408,15 +427,7 @@ class Query extends BaseQuery
             throw new Exception('miss update condition');
         }
 
-        if ($lazyTime > 0) {
-            $guid = $this->getLazyFieldCacheKey($field);
-            $step = $this->lazyWrite('inc', $guid, $step, $lazyTime);
-            if (false === $step) {
-                return true;
-            }
-        }
-
-        return $this->inc($field, $step)->update();
+        return $this->inc($field, $step, $lazyTime)->update();
     }
 
     /**
@@ -439,16 +450,7 @@ class Query extends BaseQuery
             throw new Exception('miss update condition');
         }
 
-        if ($lazyTime > 0) {
-            $guid = $this->getLazyFieldCacheKey($field);
-            $step = $this->lazyWrite('dec', $guid, $step, $lazyTime);
-            if (false === $step) {
-                return true;
-            }
-            return $this->inc($field, $step)->update();
-        }
-
-        return $this->dec($field, $step)->update();
+        return $this->dec($field, $step, $lazyTime)->update();
     }
 
     /**

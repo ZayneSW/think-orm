@@ -135,13 +135,6 @@ abstract class Model implements JsonSerializable, ArrayAccess, Arrayable, Jsonab
     protected $globalScope = [];
 
     /**
-     * 数据字段值的变化.
-     *
-     * @var array
-     */
-    protected $change = [];
-
-    /**
      * 数据表延迟写入的字段
      *
      * @var array
@@ -637,8 +630,7 @@ abstract class Model implements JsonSerializable, ArrayAccess, Arrayable, Jsonab
      */
     public function inc(string $field, float $step = 1)
     {
-        $this->setAttr($field, ['INC', $step]);
-        $this->change[$field] = $this->origin[$field] + $step;
+        $this->setAttr($field, new Express('+', $step));
         return $this;
     }
 
@@ -652,8 +644,7 @@ abstract class Model implements JsonSerializable, ArrayAccess, Arrayable, Jsonab
      */
     public function dec(string $field, float $step = 1)
     {
-        $this->setAttr($field, ['DEC', $step]);
-        $this->change[$field] = $this->origin[$field] - $step;
+        $this->setAttr($field, new Express('-', $step));
         return $this;
     }
 
@@ -693,14 +684,6 @@ abstract class Model implements JsonSerializable, ArrayAccess, Arrayable, Jsonab
         $this->trigger('AfterWrite');
 
         if (!$this->entity) {
-            if (!empty($this->change)) {
-                // 处理递增递减数据
-                foreach ($this->change as $field => $val) {
-                    $this->data[$field] = $val;
-                }
-                $this->change = [];
-            }
-
             foreach ($this->data as $name => &$val) {
                 if ($val instanceof Express) {
                     $step   = $val->getStep();

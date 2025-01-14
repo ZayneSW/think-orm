@@ -20,7 +20,6 @@ use Stringable;
 use think\db\Express;
 use think\db\Raw;
 use think\helper\Str;
-use think\Model;
 use think\model\contract\EnumTransform;
 use think\model\contract\FieldTypeTransform;
 use think\model\Relation;

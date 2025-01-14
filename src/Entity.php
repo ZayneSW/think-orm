@@ -662,8 +662,7 @@ abstract class Entity implements JsonSerializable, ArrayAccess, Arrayable, Jsona
      */
     public function inc(string $field, float $step = 1)
     {
-        $this->set($field, new Express('+', $step));
-        return $this;
+        return $this->set($field, new Express('+', $step));
     }
 
     /**
@@ -676,8 +675,7 @@ abstract class Entity implements JsonSerializable, ArrayAccess, Arrayable, Jsona
      */
     public function dec(string $field, float $step = 1)
     {
-        $this->set($field, new Express('-', $step));
-        return $this;
+        return $this->set($field, new Express('-', $step));
     }
 
     /**
@@ -1256,9 +1254,9 @@ abstract class Entity implements JsonSerializable, ArrayAccess, Arrayable, Jsona
      * @param string $name  名称
      * @param mixed  $value 值
      *
-     * @return void
+     * @return $this
      */
-    public function set(string $name, $value): void
+    public function set(string $name, $value)
     {
         if (!empty(self::$weakMap[$this]['mapping'])) {
             $name = array_search($name, self::$weakMap[$this]['mapping']) ?: $name;
@@ -1276,6 +1274,7 @@ abstract class Entity implements JsonSerializable, ArrayAccess, Arrayable, Jsona
         }
 
         $this->setData($name, $value);
+        return $this;
     }
 
     /**

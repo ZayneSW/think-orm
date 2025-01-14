@@ -15,25 +15,37 @@ declare (strict_types = 1);
 // ThinkORM 助手函数
 //-------------------------
 
+use think\db\BaseQuery as Query;
 use think\db\Express;
 use think\db\Raw;
+use think\facade\Db;
+
+if (!function_exists('db')) {
+    function db(string $name, ?string $connect = null): Query
+    {
+        if ($connect) {
+            return Db::connect($connect)->name($name);
+        }
+        return Db::name($name);
+    }
+}
 
 if (!function_exists('raw')) {
-    function raw(string $value, array $bind = [])
+    function raw(string $value, array $bind = []): Raw
     {
         return new Raw($value, $bind);
     }
 }
 
 if (!function_exists('inc')) {
-    function inc($step)
+    function inc(float $step = 1): Express
     {
         return new Express('+', $step);
     }
 }
 
 if (!function_exists('dec')) {
-    function dec($step)
+    function dec(float $step = 1): Express
     {
         return new Express('-', $step);
     }
