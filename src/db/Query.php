@@ -370,8 +370,7 @@ class Query extends BaseQuery
     public function inc(string $field, float $step = 1, int $lazyTime = 0)
     {
         if ($lazyTime > 0) {
-            $guid = $this->getLazyFieldCacheKey($field);
-            $step = $this->lazyWrite('inc', $guid, $step, $lazyTime);
+            $step = $this->lazyWrite($field, 'inc', $guid, $step, $lazyTime);
             if (false === $step) {
                 return $this;
             }
@@ -394,8 +393,7 @@ class Query extends BaseQuery
     public function dec(string $field, float $step = 1, int $lazyTime = 0)
     {
         if ($lazyTime > 0) {
-            $guid = $this->getLazyFieldCacheKey($field);
-            $step = $this->lazyWrite('dec', $guid, $step, $lazyTime);
+            $step = $this->lazyWrite($field, 'dec', $guid, $step, $lazyTime);
             if (false === $step) {
                 return $this;
             }
@@ -456,15 +454,17 @@ class Query extends BaseQuery
     /**
      * 延时更新检查 返回false表示需要延时
      * 否则返回实际写入的数值
-     * @access protected
+     * @access public
+     * @param  string  $field    字段名
      * @param  string  $type     自增或者自减
      * @param  string  $guid     写入标识
      * @param  float   $step     写入步进值
      * @param  int     $lazyTime 延时时间(s)
      * @return false|integer
      */
-    protected function lazyWrite(string $type, string $guid, float $step, int $lazyTime)
+    public function lazyWrite(string $field, string $type, string $guid, float $step, int $lazyTime)
     {
+        $guid  = $this->getLazyFieldCacheKey($field);
         $cache = $this->getCache();
         if (!$cache->has($guid . '_time')) {
             // 计时开始

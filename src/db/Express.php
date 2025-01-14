@@ -23,10 +23,11 @@ class Express
      *
      * @param string $type
      * @param float $value
+     * @param int   $lazyTime
      *
      * @return void
      */
-    public function __construct(protected string $type, protected float $step)
+    public function __construct(protected string $type, protected float $step = 1, protected int $lazyTime = 0)
     {
     }
 
@@ -38,6 +39,11 @@ class Express
     public function getType()
     {
         return $this->type;
+    }
+
+    public function getLazyTime()
+    {
+        return $this->lazyTime;
     }
 
     /**

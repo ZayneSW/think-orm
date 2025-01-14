@@ -38,15 +38,15 @@ if (!function_exists('raw')) {
 }
 
 if (!function_exists('inc')) {
-    function inc(float $step = 1): Express
+    function inc(float $step = 1, int $lazyTime = 0): Express
     {
-        return new Express('+', $step);
+        return new Express('+', $step, $lazyTime);
     }
 }
 
 if (!function_exists('dec')) {
-    function dec(float $step = 1): Express
+    function dec(float $step = 1, int $lazyTime = 0): Express
     {
-        return new Express('-', $step);
+        return new Express('-', $step, $lazyTime);
     }
 }

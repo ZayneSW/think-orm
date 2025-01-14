@@ -85,7 +85,15 @@ class Builder extends BaseBuilder
                     throw new Exception('fields not exists:[' . $key . ']');
                 }
             } elseif ($val instanceof Express) {
-                $result[$item] = $item . $this->parseExpress($query, $val);
+                if ($val->getLazyTime() && in_array($val->getType(), ['+', '-'])) {
+                    $step = $query->lazyWrite($key, $val->getType() == '+' ? 'inc' : 'dec', $guid, $val->getStep(), $val->getLazyTime());
+                    if (false === $step) {
+                        continue;
+                    }
+                    $result[$item] = $item . ' + ' . $step;
+                } else {
+                    $result[$item] = $item . $this->parseExpress($query, $val);
+                }
             } elseif (is_array($val) && !empty($val) && is_string($val[0])) {
                 if (in_array(strtoupper($val[0]), ['INC', 'DEC'])) {
                     $result[$item] = match (strtoupper($val[0])) {
