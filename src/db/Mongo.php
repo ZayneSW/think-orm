@@ -488,7 +488,9 @@ class Mongo extends BaseQuery
     public function order($field, string $order = '')
     {
         if (is_array($field)) {
-            $this->options['sort'] = $field;
+            $this->options['sort'] = array_map(function ($val) {
+                return 'asc' == strtolower($val) ? 1 : -1;
+            }, $field);
         } else {
             $this->options['sort'][$field] = 'asc' == strtolower($order) ? 1 : -1;
         }
@@ -564,9 +566,9 @@ class Mongo extends BaseQuery
         }
 
         $defaultConfig = [
-            'query' => [], //url额外参数
-            'fragment' => '', //url锚点
-            'var_page' => 'page', //分页变量
+            'query'     => [], //url额外参数
+            'fragment'  => '', //url锚点
+            'var_page'  => 'page', //分页变量
             'list_rows' => 15, //每页数量
         ];
 
