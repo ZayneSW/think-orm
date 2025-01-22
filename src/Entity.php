@@ -92,9 +92,63 @@ abstract class Entity implements JsonSerializable, ArrayAccess, Arrayable, Jsona
         ];
 
         // 设置模型
-        self::$weakMap[$this]['model'] = $this->initModel($model, $options);
+        self::$weakMap[$this]['model'] = $this->initModel($model, $options['model_class'] ?? str_replace('\\entity\\', '\\model\\', static::class));
+
+        // 初始化模型
+        $this->init();
+
         // 初始化数据
         $this->initializeData($data);
+    }
+
+    /**
+     *  初始化模型.
+     *
+     * @return void
+     */
+    protected function init(): void
+    {
+    }
+
+    /**
+     * 在实体模型中定义 返回相关配置参数.
+     *
+     * @return array
+     */
+    protected function getOptions(): array
+    {
+        return [];
+    }
+
+    /**
+     * 设置模型参数
+     *
+     * @param string $name  参数名
+     * @param mixed  $value  值
+     *
+     * @return void
+     */
+    protected function setOption(string $name, $value)
+    {
+        self::$weakMap[$this][$name] = $value;
+    }
+
+    /**
+     * 获取模型参数
+     *
+     * @param string $name  参数名
+     * @param mixed  $default  默认值
+     *
+     * @return mixed
+     */
+    protected function getOption(string $name, $default = null)
+    {
+        return self::$weakMap[$this][$name] ?? $default;
+    }
+
+    protected function setWeakData($key, $name, $value)
+    {
+        self::$weakMap[$this][$key][$name] = $value;
     }
 
     /**
@@ -104,7 +158,7 @@ abstract class Entity implements JsonSerializable, ArrayAccess, Arrayable, Jsona
      */
     protected function getTableName(): string
     {
-        return self::$weakMap[$this]['table_name'] ?: Str::snake(class_basename(static::class));
+        return $this->getOption('table_name', Str::snake(class_basename(static::class)));
     }
 
     /**
@@ -115,21 +169,19 @@ abstract class Entity implements JsonSerializable, ArrayAccess, Arrayable, Jsona
     public function getPk()
     {
         if ($this->model() instanceof Model) {
-            $pk = $this->model()->getPk();
-        } else {
-            $pk = self::$weakMap[$this]['pk'];
+            return $this->model()->getPk();
         }
-        return $pk;
+        return $this->getOption('pk');
     }
 
     /**
      * 初始化模型.
-     * @param Model $model 模型对象
-     * @param array $option 模型参数
+     * @param Model  $model 模型对象
+     * @param string $class 对象Model类名
      *
      * @return Model|Query
      */
-    protected function initModel(?Model $model = null, array $option = [])
+    private function initModel(?Model $model, string $class)
     {
         // 获取对应模型对象
         if (is_null($model)) {
@@ -141,7 +193,6 @@ abstract class Entity implements JsonSerializable, ArrayAccess, Arrayable, Jsona
                 $model = $this->getSimpleModel();
             } else {
                 // 检测绑定模型 不存在则自动设置为简单模型
-                $class = $option['model_class'] ?? str_replace('\\entity', '\\model', static::class);
                 $model = class_exists($class) ? new $class : $this->getSimpleModel();
             }
         }
@@ -158,7 +209,7 @@ abstract class Entity implements JsonSerializable, ArrayAccess, Arrayable, Jsona
     /**
      * 简单模型自动获取对应的数据表和主键
      */
-    protected function getSimpleModel()
+    private function getSimpleModel()
     {
         return Db::newQuery()
             ->name($this->getTableName())
@@ -176,17 +227,17 @@ abstract class Entity implements JsonSerializable, ArrayAccess, Arrayable, Jsona
     {
         if (empty(self::$weakMap[$this]['schema'])) {
             if ($this->isView() || $this->isVirtual()) {
-                $schema = self::$weakMap[$this]['type'] ?: [];
+                $schema = $this->getOption('type', []);
             } else {
                 // 获取数据表信息
-                $model  = self::$weakMap[$this]['model'];
+                $model  = $this->getOption('model');
                 $fields = $model->getFieldsType();
-                $schema = array_merge($fields, self::$weakMap[$this]['type'] ?: $model->getType());
+                $schema = array_merge($fields, $this->getOption('type', $model->getType()));
             }
 
-            self::$weakMap[$this]['schema'] = $schema;
+            $this->setOption('schema', $schema);
         } else {
-            $schema = self::$weakMap[$this]['schema'];
+            $schema = $this->getOption('schema');
         }
 
         if ($field) {
@@ -215,23 +266,13 @@ abstract class Entity implements JsonSerializable, ArrayAccess, Arrayable, Jsona
     }
 
     /**
-     * 在实体模型中定义 返回相关配置参数.
-     *
-     * @return array
-     */
-    protected function getOptions(): array
-    {
-        return [];
-    }
-
-    /**
      * 解析对应验证类.
      *
      * @return string
      */
     protected function parseValidate(): string
     {
-        $validate = str_replace('\\entity', '\\validate', static::class);
+        $validate = str_replace('\\entity\\', '\\validate\\', static::class);
         return class_exists($validate) ? $validate : '';
     }
 
@@ -303,7 +344,7 @@ abstract class Entity implements JsonSerializable, ArrayAccess, Arrayable, Jsona
 
         if (!empty($origin) && !$fromSave) {
             $this->trigger('AfterRead');
-            $this->setWeakMap('origin', $origin);
+            $this->setOption('origin', $origin);
         }
     }
 
@@ -356,21 +397,6 @@ abstract class Entity implements JsonSerializable, ArrayAccess, Arrayable, Jsona
     public function getRelation(string $relation): array
     {
         return self::$weakMap[$this]['relation'][$relation] ?? [];
-    }
-
-    protected function setWeakMap($name, $value)
-    {
-        self::$weakMap[$this][$name] = $value;
-    }
-
-    protected function getWeakData($name, $default = null)
-    {
-        return self::$weakMap[$this][$name] ?? $default;
-    }
-
-    protected function setWeakData($key, $name, $value)
-    {
-        self::$weakMap[$this][$key][$name] = $value;
     }
 
     /**
@@ -542,7 +568,7 @@ abstract class Entity implements JsonSerializable, ArrayAccess, Arrayable, Jsona
      */
     public function together(array $relation)
     {
-        $this->setWeakMap('together', $relation);
+        $this->setOption('together', $relation);
 
         return $this;
     }
@@ -556,7 +582,7 @@ abstract class Entity implements JsonSerializable, ArrayAccess, Arrayable, Jsona
      */
     public function allowField(array $allow)
     {
-        $this->setWeakMap('allow', $allow);
+        $this->setOption('allow', $allow);
 
         return $this;
     }
@@ -573,7 +599,7 @@ abstract class Entity implements JsonSerializable, ArrayAccess, Arrayable, Jsona
         if ($this->model() instanceof Model) {
             $this->model()->force($force);
         } else {
-            self::$weakMap[$this]['force'] = $force;
+            $this->setOption('force', $force);
         }
 
         return $this;
@@ -603,7 +629,7 @@ abstract class Entity implements JsonSerializable, ArrayAccess, Arrayable, Jsona
      */
     public function append(array $append, bool $merge = false)
     {
-        self::$weakMap[$this]['append'] = $merge ? array_merge(self::$weakMap[$this]['append'], $append) : $append;
+        $this->setOption('append', $merge ? array_merge($this->getOption('append'), $append) : $append);
 
         return $this;
     }
@@ -618,7 +644,7 @@ abstract class Entity implements JsonSerializable, ArrayAccess, Arrayable, Jsona
      */
     public function hidden(array $hidden, bool $merge = false)
     {
-        self::$weakMap[$this]['hidden'] = $merge ? array_merge(self::$weakMap[$this]['hidden'], $hidden) : $hidden;
+        $this->setOption('hidden', $merge ? array_merge($this->getOption('hidden'), $hidden) : $hidden);
 
         return $this;
     }
@@ -633,7 +659,7 @@ abstract class Entity implements JsonSerializable, ArrayAccess, Arrayable, Jsona
      */
     public function visible(array $visible, bool $merge = false)
     {
-        self::$weakMap[$this]['visible'] = $merge ? array_merge(self::$weakMap[$this]['visible'], $visible) : $visible;
+        $this->setOption('visible', $merge ? array_merge($this->getOption('visible'), $visible) : $visible);
 
         return $this;
     }
@@ -647,7 +673,7 @@ abstract class Entity implements JsonSerializable, ArrayAccess, Arrayable, Jsona
      */
     public function mapping(array $map)
     {
-        self::$weakMap[$this]['mapping'] = $map;
+        $this->setOption('mapping', $map);
 
         return $this;
     }
@@ -723,9 +749,9 @@ abstract class Entity implements JsonSerializable, ArrayAccess, Arrayable, Jsona
 
         $data     = $this->getData();
         $origin   = $this->getOrigin();
-        $allow    = $this->getWeakData('allow') ?: array_keys($this->getFields());
-        $readonly = $this->getWeakData('readonly');
-        $disuse   = $this->getWeakData('disuse');
+        $allow    = $this->getOption('allow') ?: array_keys($this->getFields());
+        $readonly = $this->getOption('readonly');
+        $disuse   = $this->getOption('disuse');
         $allow    = array_diff($allow, $readonly, $disuse);
 
         // 验证数据
@@ -793,7 +819,7 @@ abstract class Entity implements JsonSerializable, ArrayAccess, Arrayable, Jsona
         }
 
         // 重置原始数据
-        $this->setWeakMap('origin', $this->getData());
+        $this->setOption('origin', $this->getData());
         return true;
     }
 
@@ -891,7 +917,7 @@ abstract class Entity implements JsonSerializable, ArrayAccess, Arrayable, Jsona
     protected function relationSave(array $relations = [])
     {
         foreach ($relations as $name => $relation) {
-            if ($relation && in_array($name, $this->getWeakData('together'))) {
+            if ($relation && in_array($name, $this->getOption('together'))) {
                 $relationKey = $this->getRelationKey($name);
                 if ($relationKey) {
                     $relation->$relationKey = $this->getKey();
@@ -910,7 +936,7 @@ abstract class Entity implements JsonSerializable, ArrayAccess, Arrayable, Jsona
     protected function relationDelete(array $relations = [])
     {
         foreach ($relations as $name => $relation) {
-            if ($relation && in_array($name, $this->getWeakData('together'))) {
+            if ($relation && in_array($name, $this->getOption('together'))) {
                 $relation->delete();
             }
         }
@@ -1247,7 +1273,7 @@ abstract class Entity implements JsonSerializable, ArrayAccess, Arrayable, Jsona
         if ($this->model() instanceof Model) {
             return $this->model()->isForce();
         }
-        return self::$weakMap[$this]['force'] ?? false;
+        return $this->getOption('force', false);
     }
 
     /**
