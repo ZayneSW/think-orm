@@ -1296,7 +1296,7 @@ abstract class Entity implements JsonSerializable, ArrayAccess, Arrayable, Jsona
         if (is_null($value) && is_subclass_of($type, Entity::class)) {
             // 关联数据为空 设置一个空模型
             $value = new $type();
-        } else {
+        } elseif (!($value instanceof Entity || $value instanceof Collection)) {
             // 类型自动转换
             $value = $this->readTransform($value, $type);
         }
