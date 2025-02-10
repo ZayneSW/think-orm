@@ -384,7 +384,7 @@ abstract class Entity implements JsonSerializable, ArrayAccess, Arrayable, Jsona
                 $this->$relation = new $type($val);
             } else {
                 // 寄存关联数据
-                $this->setRelation($relation, $val);
+                $this->setTempRelation($relation, $val);
             }
         }
     }
@@ -397,7 +397,7 @@ abstract class Entity implements JsonSerializable, ArrayAccess, Arrayable, Jsona
      *
      * @return void
      */
-    protected function setRelation(string $relation, array $data)
+    protected function setTempRelation(string $relation, array $data)
     {
         $this->setWeakData('relation', $relation, $data);
     }
@@ -1319,7 +1319,7 @@ abstract class Entity implements JsonSerializable, ArrayAccess, Arrayable, Jsona
     }
 
     /**
-     * 使用修改器或类型自动转换处理数据
+     * 使用修改器或类型自动转换处理数据（写入数据前自动调用）
      *
      * @param string $name  名称
      * @param mixed  $value 值
@@ -1474,13 +1474,9 @@ abstract class Entity implements JsonSerializable, ArrayAccess, Arrayable, Jsona
         $call = 'on' . Str::studly($event);
 
         try {
-            if (method_exists($this, $call)) {
-                $result = $this->$call($this);
-            } else {
-                $result = true;
-            }
+            $result = method_exists($this, $call) ? $this->$call($this) : true;
 
-            return !(false === $result);
+            return false !== $result;
         } catch (ModelEventException $e) {
             return false;
         }
@@ -1548,6 +1544,19 @@ abstract class Entity implements JsonSerializable, ArrayAccess, Arrayable, Jsona
         } else {
             $this->set($name, $value);
         }
+    }
+
+    /**
+     * 设置关联数据.
+     *
+     * @param string $relation 关联属性
+     * @param array  $data  关联数据
+     *
+     * @return void
+     */
+    public function setRelation(string $relation, $data)
+    {
+        $this->__set($relation, $data);
     }
 
     protected function getBindAttr($bind, $name)
