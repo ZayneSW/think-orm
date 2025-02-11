@@ -826,12 +826,22 @@ abstract class Entity implements JsonSerializable, ArrayAccess, Arrayable, Jsona
 
         $model = $this->model();
         if ($model instanceof Model) {
-            $result = $model->allowField($allow)->setUpdateWhere($where)->save($data);
+            if(!empty($where)) {
+                $model->setUpdateWhere($where);
+            } else {
+                $model->setKey($this->getKey());
+            }
+            $result = $model->allowField($allow)->save($data);
             if (false === $result) {
                 return false;
             }
         } else {
-            $result = $model->field($allow)->where($where)->save($data, !$isUpdate);
+            if(!empty($where)) {
+                $model->where($where);
+            } else {
+                $model->setKey($this->getKey());
+            }            
+            $result = $model->field($allow)->save($data, !$isUpdate);
             if (!$isUpdate) {
                 $this->setKey($model->getLastInsID());
             }
