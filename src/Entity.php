@@ -359,11 +359,6 @@ abstract class Entity implements JsonSerializable, ArrayAccess, Arrayable, Jsona
             }
 
             $trueName = $this->getRealFieldName($name);
-            if (!$this->isView() && !$fromSave && $this->getPk() == $trueName) {
-                // 记录主键值
-                $this->model()->setKey($val);
-            }
-
             if ($this->isView() || $this->isVirtual() || in_array($trueName, $fields)) {
                 // 读取数据后进行类型转换
                 $value = $this->readTransform($val, $schema[$trueName] ?? 'string');
@@ -382,6 +377,7 @@ abstract class Entity implements JsonSerializable, ArrayAccess, Arrayable, Jsona
         if (!empty($origin) && !$fromSave) {
             $this->trigger('AfterRead');
             $this->setOption('origin', $origin);
+            $this->setOption('get', []);
         }
     }
 
@@ -1225,7 +1221,6 @@ abstract class Entity implements JsonSerializable, ArrayAccess, Arrayable, Jsona
     public function data(array $data)
     {
         $this->initializeData($data);
-        $this->setOption('get', []);
     }
 
     /**
