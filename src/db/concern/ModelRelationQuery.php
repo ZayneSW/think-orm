@@ -666,15 +666,11 @@ trait ModelRelationQuery
             }
         }
 
-        if ($this->model instanceof Entity) {
-            $result = $this->model->data($result);
-        } else {
-            $result = $this->model->newInstance(
-                $result,
-                !empty($this->options['is_resultSet']) ? null : $this->getModelUpdateCondition($this->options),
-                $this->options
-            );
-        }
+        $result = $this->model->newInstance(
+            $result,
+            !empty($this->options['is_resultSet']) ? null : $this->getModelUpdateCondition($this->options),
+            $this->options
+        );
 
         if ($this->suffix) {
             $result->setSuffix($this->suffix);

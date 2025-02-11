@@ -110,6 +110,18 @@ abstract class Entity implements JsonSerializable, ArrayAccess, Arrayable, Jsona
     }
 
     /**
+     * 创建新的模型实例.
+     *
+     * @param array $data
+     *
+     * @return static
+     */
+    public function newInstance(array $data)
+    {
+        return new static($data);
+    }
+
+    /**
      * 在实体模型中定义 返回相关配置参数.
      *
      * @return array
@@ -1208,13 +1220,12 @@ abstract class Entity implements JsonSerializable, ArrayAccess, Arrayable, Jsona
      *
      * @param array $data
      *
-     * @return $this
+     * @return void
      */
     public function data(array $data)
     {
         $this->initializeData($data);
         $this->setOption('get', []);
-        return $this;
     }
 
     /**
