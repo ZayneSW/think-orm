@@ -74,7 +74,6 @@ abstract class Entity implements JsonSerializable, ArrayAccess, Arrayable, Jsona
             'schema'        => $options['schema'] ?? [],
             'update_time'   => $options['update_time'] ?? 'update_time',
             'create_time'   => $options['create_time'] ?? 'create_time',
-            'table_name'    => $options['table_name'] ?? '',
             'pk'            => $options['pk'] ?? 'id',
             'validate'      => $options['validate'] ?? $this->parseValidate(),
             'type'          => $options['type'] ?? [],
@@ -192,6 +191,16 @@ abstract class Entity implements JsonSerializable, ArrayAccess, Arrayable, Jsona
     }
 
     /**
+     * 获取模型名.
+     *
+     * @return string
+     */
+    public function getName(): string
+    {
+        return Str::snake($this->getTableName());
+    }
+
+    /**
      * 初始化模型.
      * @param Model  $model 模型对象
      * @param string $class 对象Model类名
@@ -228,7 +237,8 @@ abstract class Entity implements JsonSerializable, ArrayAccess, Arrayable, Jsona
      */
     private function getSimpleModel()
     {
-        return Db::newQuery()
+        return Db::connect($this->getOption('connect'))
+            ->newQuery()
             ->name($this->getTableName())
             ->pk($this->getOption('pk'));
     }
@@ -836,8 +846,20 @@ abstract class Entity implements JsonSerializable, ArrayAccess, Arrayable, Jsona
         }
 
         // 重置原始数据
-        $this->setOption('origin', $this->getData());
+        $this->refreshOrigin();
         return true;
+    }
+
+    /**
+     * 刷新对象原始数据（为当前数据）.
+     *
+     * @return $this
+     */
+    public function refreshOrigin()
+    {
+        $this->setOption('origin', $this->getData());
+
+        return $this;
     }
 
     /**
@@ -1517,6 +1539,30 @@ abstract class Entity implements JsonSerializable, ArrayAccess, Arrayable, Jsona
     }
 
     /**
+     * 设置父模型对象
+     *
+     * @param self $model 模型对象
+     *
+     * @return $this
+     */
+    public function setParent($model)
+    {
+        $this->setOption('parent', $model);
+
+        return $this;
+    }
+
+    /**
+     * 获取父模型对象
+     *
+     * @return self
+     */
+    public function getParent()
+    {
+        return $this->getOption('parent');
+    }
+
+    /**
      * 获取属性 支持获取器
      *
      * @param string $name 名称
@@ -1654,6 +1700,35 @@ abstract class Entity implements JsonSerializable, ArrayAccess, Arrayable, Jsona
         $this->__unset($name);
     }
 
+    /**
+     * 设置当前模型数据表的后缀
+     *
+     * @param string $suffix 数据表后缀
+     *
+     * @return $this
+     */
+    public function setSuffix(string $suffix)
+    {
+        $this->setOption('suffix', $suffix);
+
+        return $this;
+    }
+
+    /**
+     * 获取查询对象
+     *
+     * @return Query
+     */
+    public function db(): Query
+    {
+        $db = $this->model();
+        $db = $db instanceof Query ? $db : $db->db();
+
+        // 执行扩展查询
+        $this->query($db->suffix($this->getOption('suffix', '')));
+        return $db;    
+    }
+
     public static function __callStatic($method, $args)
     {
         $model = new static();
@@ -1662,11 +1737,7 @@ abstract class Entity implements JsonSerializable, ArrayAccess, Arrayable, Jsona
             throw new Exception('virtual model not support db query');
         }
 
-        $db = $model->model();
-        $db = $db instanceof Query ? $db : $db->db();
-
-        // 执行扩展查询
-        $model->query($db);
+        $db = $model->db();
 
         if (!empty(self::$weakMap[$model]['auto_relation'])) {
             // 自动获取关联数据
