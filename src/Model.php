@@ -762,7 +762,7 @@ abstract class Model implements JsonSerializable, ArrayAccess, Arrayable, Jsonab
 
         // 获取有更新的数据
         if (!$this->entity) {
-            $data = $this->getChangedData($data);
+            $data = $this->getChangedData($this->data);
         }
 
         if (empty($data)) {
@@ -840,6 +840,10 @@ abstract class Model implements JsonSerializable, ArrayAccess, Arrayable, Jsonab
         }
 
         $this->checkData();
+
+        if (!$this->entity) {
+            $data = $this->data;
+        }
 
         // 主键自动写入
         if ($this->isAutoWriteId()) {

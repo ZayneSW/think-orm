@@ -85,7 +85,6 @@ abstract class Entity implements JsonSerializable, ArrayAccess, Arrayable, Jsona
             'mapping'       => $options['mapping'] ?? [],
             'strict'        => $options['strict'] ?? true,
             'bind_attr'     => $options['bind_attr'] ?? [],
-            'auto_insert'   => $options['auto_insert'] ?? [],
             'auto_relation' => $options['auto_relation'] ?? [],
             'relation_keys' => $options['relation_keys'] ?? [],
         ];
@@ -827,10 +826,8 @@ abstract class Entity implements JsonSerializable, ArrayAccess, Arrayable, Jsona
         // 自动时间戳处理
         $this->autoDateTime($data, $isUpdate);
 
-        if (!$isUpdate) {
-            // 自动写入数据
-            $this->autoInsertData($data);
-        }
+        // 自动写入数据
+        $this->autoWriteData($data, $isUpdate);
 
         $model = $this->model();
         if ($model instanceof Model) {
@@ -906,23 +903,22 @@ abstract class Entity implements JsonSerializable, ArrayAccess, Arrayable, Jsona
      * 字段自动写入.
      *
      * @param array $data 数据
+     * @param bool  $isUpdate 是否更新
      * @return void
      */
-    protected function autoInsertData(array &$data)
+    protected function autoWriteData(array &$data, bool $isUpdate)
     {
-        $autoInsert = $this->getOption('auto_insert', []);
-        if (!empty($autoInsert)) {
-            foreach ($autoInsert as $name => $val) {
-                $field = is_string($name) ? $name : $val;
-                if (!isset($data[$field])) {
-                    if ($val instanceof Closure) {
-                        $value = $val($this);
-                    } else {
-                        $value = is_string($name) ? $val : $this->setWithAttr($field, null, $data);
-                    }
-                    $data[$field] = $value;
-                    $this->setData($field, $value);
+        $auto = $this->getOption($isUpdate ? 'auto_update' : 'auto_insert', []);
+        foreach ($auto as $name => $val) {
+            $field = is_string($name) ? $name : $val;
+            if (!isset($data[$field])) {
+                if ($val instanceof Closure) {
+                    $value = $val($this);
+                } else {
+                    $value = is_string($name) ? $val : $this->setWithAttr($field, null, $data);
                 }
+                $data[$field] = $value;
+                $this->setData($field, $value);
             }
         }
     }
