@@ -291,7 +291,7 @@ abstract class Entity implements JsonSerializable, ArrayAccess, Arrayable, Jsona
      *
      * @return array
      */
-    protected function parseData(array | object $data): array
+    private function parseData(array | object $data): array
     {
         if ($data instanceof self) {
             $data = $data->getData();
@@ -314,7 +314,7 @@ abstract class Entity implements JsonSerializable, ArrayAccess, Arrayable, Jsona
     }
 
     /**
-     * 获取模型实例.
+     * 获取模型或数据对象实例.
      * @return Model|Query
      */
     public function model()
@@ -330,7 +330,7 @@ abstract class Entity implements JsonSerializable, ArrayAccess, Arrayable, Jsona
      *
      * @return void
      */
-    protected function initializeData(array | object $data, bool $fromSave = false)
+    private function initializeData(array | object $data, bool $fromSave = false)
     {
         // 分析数据
         $data    = $this->parseData($data);
@@ -387,7 +387,7 @@ abstract class Entity implements JsonSerializable, ArrayAccess, Arrayable, Jsona
      *
      * @return void
      */
-    protected function parseRelationData(array $relations)
+    private function parseRelationData(array $relations)
     {
         foreach ($relations as $relation => $val) {
             $relation = $this->getRealFieldName($relation);
@@ -414,7 +414,7 @@ abstract class Entity implements JsonSerializable, ArrayAccess, Arrayable, Jsona
      *
      * @return void
      */
-    protected function setTempRelation(string $relation, array $data)
+    private function setTempRelation(string $relation, array $data)
     {
         $this->setWeakData('relation', $relation, $data);
     }
@@ -748,13 +748,13 @@ abstract class Entity implements JsonSerializable, ArrayAccess, Arrayable, Jsona
      * @throws InvalidArgumentException
      * @return void
      */
-    protected function validate(array $data, array $allow)
+    protected function validate(array $data, array $allow = [])
     {
         $validater = $this->getOption('validate');
         if (!empty($validater) && class_exists('think\validate')) {
             try {
                 validate($validater)
-                    ->only($allow)
+                    ->only($allow ?: array_keys($data))
                     ->check($data);
             } catch (ValidateException $e) {
                 // 验证失败 输出错误信息
@@ -966,9 +966,9 @@ abstract class Entity implements JsonSerializable, ArrayAccess, Arrayable, Jsona
      * 写入模型关联数据（一对一）.
      *
      * @param array $relations 数据
-     * @return bool
+     * @return void
      */
-    protected function relationSave(array $relations = [])
+    private function relationSave(array $relations = [])
     {
         foreach ($relations as $name => $relation) {
             if ($relation && in_array($name, $this->getOption('together'))) {
@@ -987,7 +987,7 @@ abstract class Entity implements JsonSerializable, ArrayAccess, Arrayable, Jsona
      * @param array $relations 数据
      * @return void
      */
-    protected function relationDelete(array $relations = [])
+    private function relationDelete(array $relations = [])
     {
         foreach ($relations as $name => $relation) {
             if ($relation && in_array($name, $this->getOption('together'))) {
@@ -1009,7 +1009,7 @@ abstract class Entity implements JsonSerializable, ArrayAccess, Arrayable, Jsona
     }
 
     /**
-     * 是否为虚拟模型（不能写入）.
+     * 是否为虚拟模型（不能查询）.
      *
      * @return bool
      */

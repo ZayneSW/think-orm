@@ -272,13 +272,13 @@ abstract class OneToOne extends Relation
      */
     protected function match(string $model, string $relation, Model $result): void
     {
-        if ($result->getEntity()) {
-            $data = $result->getEntity()->getRelation($relation);
+        if ($result instanceof Entity) {
+            $data = $result->getRelation($relation);
             if (!empty($data)) {
-                $relationModel = (new $model())->newInstance($data);
                 if ($this->bindAttr) {
-                    $result->getEntity()->bindRelationAttr($data, $this->bindAttr);
+                    $result->bindRelationAttr($data, $this->bindAttr);
                 } else {
+                    $relationModel = (new $model())->newInstance($data);
                     $result->setRelation($relation, $relationModel);
                 }
             }
