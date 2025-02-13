@@ -801,7 +801,7 @@ abstract class Entity implements JsonSerializable, ArrayAccess, Arrayable, Jsona
 
 
         foreach ($data as $name => &$val) {
-            if ($val instanceof Entity || is_subclass_of($this->getFields($name), Entity::class)) {
+            if ($val instanceof Entity) {
                 $relations[$name] = $val;
                 unset($data[$name]);
             } elseif ($val instanceof Collection || !in_array($name, $allow)) {
