@@ -781,16 +781,6 @@ abstract class Entity implements JsonSerializable, ArrayAccess, Arrayable, Jsona
             return true;
         }
 
-        $data     = $this->getData();
-        $origin   = $this->getOrigin();
-        $allow    = $this->getOption('allow') ?: array_keys($this->getFields());
-        $readonly = $this->getOption('readonly');
-        $disuse   = $this->getOption('disuse');
-        $allow    = array_diff($allow, $readonly, $disuse);
-
-        // 验证数据
-        $this->validate($data, $allow);
-
         if (true === $where) {
             $isUpdate = false;
         } elseif (!empty($where)) {
@@ -802,6 +792,17 @@ abstract class Entity implements JsonSerializable, ArrayAccess, Arrayable, Jsona
         if (false === $this->trigger($isUpdate ? 'BeforeUpdate' : 'BeforeInsert')) {
             return false;
         }
+
+        $data     = $this->getData();
+        $origin   = $this->getOrigin();
+        $allow    = $this->getOption('allow') ?: array_keys($this->getFields());
+        $readonly = $this->getOption('readonly');
+        $disuse   = $this->getOption('disuse');
+        $allow    = array_diff($allow, $readonly, $disuse);
+
+        // 验证数据
+        $this->validate($data, $allow);
+
 
         foreach ($data as $name => &$val) {
             if ($val instanceof Entity || is_subclass_of($this->getFields($name), Entity::class)) {
