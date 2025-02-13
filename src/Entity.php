@@ -74,6 +74,10 @@ abstract class Entity implements JsonSerializable, ArrayAccess, Arrayable, Jsona
             'schema'        => $options['schema'] ?? [],
             'update_time'   => $options['update_time'] ?? 'update_time',
             'create_time'   => $options['create_time'] ?? 'create_time',
+            'connection'    => $options['connection'] ?? null,
+            'name'          => $options['name'] ?? null,
+            'table'         => $options['table'] ?? null,
+            'suffix'        => $options['suffix'] ?? '',
             'pk'            => $options['pk'] ?? 'id',
             'validate'      => $options['validate'] ?? $this->parseValidate(),
             'type'          => $options['type'] ?? [],
@@ -179,16 +183,6 @@ abstract class Entity implements JsonSerializable, ArrayAccess, Arrayable, Jsona
     }
 
     /**
-     * 获取对应表名（仅限简单模型）.
-     *
-     * @return string
-     */
-    protected function getTableName(): string
-    {
-        return $this->getOption('table_name', Str::snake(class_basename(static::class)));
-    }
-
-    /**
      * 获取主键名.
      *
      * @return string|array
@@ -202,13 +196,13 @@ abstract class Entity implements JsonSerializable, ArrayAccess, Arrayable, Jsona
     }
 
     /**
-     * 获取模型名.
+     * 获取表名（不含前后缀）.
      *
      * @return string
      */
     public function getName(): string
     {
-        return Str::snake($this->getTableName());
+        return $this->getOption('name', Str::snake(class_basename(static::class)));
     }
 
     /**
@@ -248,10 +242,12 @@ abstract class Entity implements JsonSerializable, ArrayAccess, Arrayable, Jsona
      */
     private function getSimpleModel()
     {
-        return Db::connect($this->getOption('connect'))
+        $db = Db::connect($this->getOption('connection'))
             ->newQuery()
-            ->name($this->getTableName())
             ->pk($this->getOption('pk'));
+
+        return $this->getOption('table') ? $db->table($this->getOption('table'))
+            : $db->name($this->getName())->suffix($this->getOption('suffix'));
     }
 
     /**
@@ -1738,7 +1734,7 @@ abstract class Entity implements JsonSerializable, ArrayAccess, Arrayable, Jsona
         $db = $db instanceof Query ? $db : $db->db();
 
         // 执行扩展查询
-        $this->query($db->suffix($this->getOption('suffix', '')));
+        $this->query($db->suffix($this->getOption('suffix')));
         return $db;    
     }
 
